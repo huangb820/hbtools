@@ -8,6 +8,10 @@ import numpy as np
 import rich
 from rich.panel import Panel
 
+from pathlib import Path
+
+from .dataread import Readvaspout
+from numpy.typing import NDArray
 if TYPE_CHECKING:
     from .dataread import Readvaspout, ReadVasprun
 
@@ -81,6 +85,38 @@ def get_gap(
         rich.print(Panel(std_str))
 
     return gaps
+
+def get_valley_polarization(
+    file: str = "./vaspout.h5",
+    point1: int = 49,
+    point2: int = 149,
+    vbms: list[int] | None = None,
+):
+    def is_metal_or_vbm(ylist: NDArray[np.float64]) -> bool | int:
+        nbands = ylist.shape[1]
+        extremum = np.array(
+            [[ylist[:, n].min(), ylist[:, n].max()] for n in range(nbands)]
+        )
+
+        if (extremum[:, 0] * extremum[:, 1]).min() > 0:
+            maxs = extremum[:, 1]
+            vbm = np.count_nonzero(abs(maxs) - maxs)
+            return vbm
+        else:
+            return True
+
+    data = Readvaspout(Path(file), auto_select_k=True)
+    eigenvalues = data.eigenvalues
+    ylist = eigenvalues - data.fermi
+
+    for i, spin in enumerate(ylist):
+        vbm = is_metal_or_vbm(spin) if vbms is None else vbms[i]
+        value1: float = spin[point1, vbm - 1]
+        rich.print(f"Energy at point {point1} of band {vbm} is {value1:.6f} eV")
+        value2: float = spin[point2, vbm - 1]
+        rich.print(f"Energy at point {point2} of band {vbm} is {value2:.6f} eV")
+
+        rich.print(f"valley value is {value2-value1:.6f} eV")
 
 
 orbitals_str_all = (

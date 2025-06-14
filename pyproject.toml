@@ -10,7 +10,7 @@ dependencies = [
     "matplotlib>=3.10.3",
     "numpy>=2.2.6",
     "rich>=14.0.0",
-    "typer>=0.15.4", 
+    "typer>=0.15.4",
 ]
 
 [project.scripts]
@@ -20,6 +20,10 @@ calc = "calctools:app"
 requires = ["pdm-backend"]
 build-backend = "pdm.backend"
 
+[tool.uv.build-backend]
+source-exclude = [
+    "tests",
+]
 
 [dependency-groups]
 dev = [

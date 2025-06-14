@@ -1,5 +1,6 @@
 from pathlib import Path
 from typing import Annotated
+
 import click
 import typer
 
@@ -24,9 +25,8 @@ def band(params: BandParams):
 
     matplotlib.use("qtagg")
     import matplotlib.pyplot as plt
-
-    from matplotlib.figure import Figure
     from matplotlib.axes import Axes
+    from matplotlib.figure import Figure
 
     fig: Figure
     ax: Axes
@@ -40,10 +40,10 @@ def band(params: BandParams):
 def dos(
     params: DosParams,
 ):
+    import matplotlib
+
     from ..utils import plot_utils
     from .dos.dosplot import DosPlot
-
-    import matplotlib
 
     matplotlib.use("qtagg")
     if params.from_cli is False:
@@ -75,8 +75,9 @@ def nbands_ewin(
     fermi: Annotated[float, typer.Option("--fermi", "-f")] = 0,
     spin: Annotated[int, typer.Option("--spin", "-s", min=0, max=1)] = 0,
 ):
-    from .dataread import Readvaspout, ReadVasprun
     import rich
+
+    from .dataread import Readvaspout, ReadVasprun
 
     if vaspfileformat == "h5":
         eigenvalues = Readvaspout(file).eigenvalues[spin]
@@ -122,8 +123,8 @@ def gap(
         ),
     ] = None,
 ):
-    from .dataread import Readvaspout, ReadVasprun
     from ..vasp.vasp_utils import get_gap
+    from .dataread import Readvaspout, ReadVasprun
 
     if vaspfileformat == "h5":
         data = Readvaspout(file)
@@ -135,3 +136,42 @@ def gap(
     else:
         vbms = None
     get_gap(data.eigenvalues, data.fermi, data.kpoints, True, vbms)
+
+
+@app.command("valley_polarization")
+def get_valley_polarization(
+    file: Annotated[Path, typer.Argument(exists=True)] = Path("vaspout.h5"),
+    vaspfileformat: Annotated[
+        str,
+        typer.Option(
+            "-vf",
+            "--vaspfileformat",
+            click_type=click.Choice(["h5", "xml"]),
+            envvar="MXMF_VASPFILE_FORMAT",
+            help="read file format.",
+        ),
+    ] = "h5",
+    vbms_str: Annotated[
+        str | None,
+        typer.Option(
+            "--vbms",
+            "-v",
+        ),
+    ] = None,
+):
+    from ..vasp.vasp_utils import get_valley_polarization
+    from .dataread import Readvaspout, ReadVasprun
+
+    if vaspfileformat == "h5":
+        data = Readvaspout(file)
+    else:
+        data = ReadVasprun(file)
+
+    if vbms_str is not None:
+        vbms = [int(i) for i in vbms_str.split()]
+    else:
+        vbms = None
+
+    return get_valley_polarization(
+        data.eigenvalues, data.fermi, data.kpoints, True, vbms
+    )
