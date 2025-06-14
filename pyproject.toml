@@ -1,0 +1,29 @@
+[project]
+name = "hbtools"
+version = "0.2.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "h5py>=3.13.0",
+    "lxml>=5.4.0",
+    "matplotlib>=3.10.3",
+    "numpy>=2.2.6",
+    "rich>=14.0.0",
+    "typer>=0.15.4", 
+]
+
+[project.scripts]
+mxmf = "hbtools:app"
+
+[build-system]
+requires = ["pdm-backend"]
+build-backend = "pdm.backend"
+
+
+[dependency-groups]
+dev = [
+    "lxml-stubs>=0.5.1",
+    "mypy>=1.15.0",
+    "optype[numpy]>=0.9.3",
+]
