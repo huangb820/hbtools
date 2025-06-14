@@ -273,7 +273,7 @@ def plot_from_cli_str(str_params: str, fig, ax):
 
     info_name = params_list[0]
     args = params_list[1:]
-    app = importlib.import_module(f"hbtools.{info_name}.cli").app
+    app = importlib.import_module(f"calctools.{info_name}.cli").app
 
     print(params_list)
 

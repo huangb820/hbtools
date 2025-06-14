@@ -7,7 +7,7 @@ import numpy as np
 from matplotlib import figure
 from matplotlib.patches import Polygon
 
-from hbtools.utils.plot_utils import AxesSet
+from calctools.utils.plot_utils import AxesSet
 from .. import vasp_utils
 from ..dataread import Readvaspout, ReadVasprun
 from .params import DosParams
