@@ -138,7 +138,7 @@ def gap(
     get_gap(data.eigenvalues, data.fermi, data.kpoints, True, vbms)
 
 
-@app.command("valley_polarization")
+@app.command("vp")
 def get_valley_polarization(
     file: Annotated[Path, typer.Argument(exists=True)] = Path("vaspout.h5"),
     vaspfileformat: Annotated[
@@ -158,6 +158,8 @@ def get_valley_polarization(
             "-v",
         ),
     ] = None,
+    point1: Annotated[int, typer.Option("--point1", "-p1", help="K+")] = 49,
+    point2: Annotated[int, typer.Option("--point2", "-p2", help="K-")] = 149,
 ):
     from ..vasp.vasp_utils import get_valley_polarization
     from .dataread import Readvaspout, ReadVasprun
@@ -172,6 +174,4 @@ def get_valley_polarization(
     else:
         vbms = None
 
-    return get_valley_polarization(
-        data.eigenvalues, data.fermi, data.kpoints, True, vbms
-    )
+    return get_valley_polarization(data.eigenvalues, data.fermi, vbms, point1, point2)

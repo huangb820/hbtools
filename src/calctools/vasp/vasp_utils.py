@@ -1,17 +1,15 @@
 import itertools
-from numpy.typing import NDArray
-
 import sys
-from typing_extensions import TYPE_CHECKING
+from pathlib import Path
 
 import numpy as np
 import rich
+from numpy.typing import NDArray
 from rich.panel import Panel
-
-from pathlib import Path
+from typing_extensions import TYPE_CHECKING
 
 from .dataread import Readvaspout
-from numpy.typing import NDArray
+
 if TYPE_CHECKING:
     from .dataread import Readvaspout, ReadVasprun
 
@@ -86,11 +84,13 @@ def get_gap(
 
     return gaps
 
+
 def get_valley_polarization(
-    file: str = "./vaspout.h5",
+    eigenvalues: NDArray[np.float64],
+    vbms: list[int] | None = None,
+    fermi: float = 0.0,
     point1: int = 49,
     point2: int = 149,
-    vbms: list[int] | None = None,
 ):
     def is_metal_or_vbm(ylist: NDArray[np.float64]) -> bool | int:
         nbands = ylist.shape[1]
@@ -105,9 +105,8 @@ def get_valley_polarization(
         else:
             return True
 
-    data = Readvaspout(Path(file), auto_select_k=True)
-    eigenvalues = data.eigenvalues
-    ylist = eigenvalues - data.fermi
+    eigenvalues = eigenvalues
+    ylist = eigenvalues - fermi
 
     for i, spin in enumerate(ylist):
         vbm = is_metal_or_vbm(spin) if vbms is None else vbms[i]
