@@ -6,6 +6,7 @@ import typer
 
 from ..utils.cli_utils import dataclass_cli
 from .band.params import BandParams
+from .calculate.params import InputParams
 from .dos.params import DosParams
 
 app = typer.Typer(no_args_is_help=True)
@@ -175,3 +176,30 @@ def get_valley_polarization(
         vbms = None
 
     return get_valley_polarization(data.eigenvalues, data.fermi, vbms, point1, point2)
+
+
+@app.command("input")
+@dataclass_cli
+def input(params: InputParams):
+    from ..vasp.calculate.input import vasp_input
+
+    if params.from_cli is False:
+        return vasp_input(params.__dict__)
+
+    from ase.io import read
+
+    atoms = read(params.poscar)
+    if params.input_type == "incar":
+        from ..vasp.calculate.input import incar_input
+
+        incar_input(atoms, params.__dict__, params.calcdir)
+    elif params.input_type == "kpoints":
+        from ..vasp.calculate.input import kpoints_input
+
+        kpoints_input(atoms, params.__dict__, params.calcdir)
+    elif params.input_type == "potcar":
+        from ..vasp.calculate.input import potcar_input
+
+        potcar_input(atoms, params.__dict__, params.calcdir)
+
+    print(f"VASP input files written to {params.calcdir}")

@@ -11,6 +11,7 @@ dependencies = [
     "numpy<2.3",
     "rich>=14.0.0",
     "typer>=0.15.4",
+    "ase @ git+https://gitlab.com/1041176461/ase-abacus.git",
 ]
 
 [project.scripts]
@@ -22,7 +23,6 @@ build-backend = "pdm.backend"
 
 [tool.uv.build-backend]
 source-exclude = ["tests"]
-
 
 
 [dependency-groups]
