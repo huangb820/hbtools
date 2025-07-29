@@ -8,11 +8,11 @@ import typer
 class InputParams:
     input_type: Annotated[
         str,
-        typer.Argument(exists=True, click_type=click.Choice(["incar", "kpoints", "potcar", "poscar"])),
         typer.Option(
             "--input-type",
             "-it",
             help="specify input type.",
+            click_type=click.Choice(["incar", "kpoints", "potcar", "poscar"]),
         ),
     ] = "incar"
     kpt_mesh: Annotated[
@@ -32,8 +32,15 @@ class InputParams:
         ),
     ] = None
 
-    calcdir: Annotated[Path, typer.Argument(exists=True, file_okay=False)] = Path("calc")
-    incar: Annotated[Path, typer.Option("--incar", "-i", exists=True)] = Path("INCAR")
-    kpoints: Annotated[Path, typer.Option("--kpoints", "-k", exists=True)] = Path("KPOINTS")
-    potcar: Annotated[Path, typer.Option("--potcar", "-p", exists=True)] = Path("POTCAR")
-    poscar: Annotated[Path, typer.Option("--poscar", "-o", exists=True)] = Path("POSCAR")
+    calcdir: Annotated[Path,
+                       typer.Argument(exists=True, file_okay=False)] = Path(
+                           "calc")
+    incar: Annotated[Path, typer.Option("--incar", "-i", exists=True)] = Path(
+        "INCAR")
+    kpoints: Annotated[Path,
+                       typer.Option("--kpoints", "-k", exists=True)] = Path(
+                           "KPOINTS")
+    potcar: Annotated[
+        Path, typer.Option("--potcar", "-p", exists=True)] = Path("POTCAR")
+    poscar: Annotated[
+        Path, typer.Option("--poscar", "-o", exists=True)] = Path("POSCAR")
