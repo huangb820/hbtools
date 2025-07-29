@@ -8,7 +8,7 @@ dependencies = [
     "h5py>=3.13.0",
     "lxml>=5.4.0",
     "matplotlib>=3.10.3",
-    "numpy>=2.2.6",
+    "numpy<2.3",
     "rich>=14.0.0",
     "typer>=0.15.4",
 ]
