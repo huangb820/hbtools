@@ -10,6 +10,8 @@ calctools现有功能可以处理VASP数据并画能带和态密度图，可以�
 ## 安装
 通过 `uv` 安装,
 
-````bash
+```bash
 uv init
 uv add --pypi "calctools@git+https://github.com/huangb820/calctools.git"
+uv tool install calctools@git+https://github.com/huangb820/calctools.git
+```
