@@ -135,3 +135,24 @@ class BandParams(HeatFigBase, FigSetBase):
             help="whether show legend",
         ),
     ] = False
+
+
+@dataclass
+class BandsParams(BandParams):
+    files: Annotated[
+        str, typer.Argument(help="Glob pattern(s) to match band structure files")
+    ] = r"*/vaspout.h5"
+    file: Path | None = None
+    # file: Annotated[Path | None, typer.Argument(exists=True)] = None
+    search_dir: Annotated[
+        Path, typer.Option("-sd", "--search_dir", help="which dir to search")
+    ] = Path(".")
+
+    save: Annotated[
+        bool,
+        typer.Option(
+            "--save",
+            help="whether save figures",
+            rich_help_panel="figure set",
+        ),
+    ] = False

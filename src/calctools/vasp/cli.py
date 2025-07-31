@@ -1,11 +1,12 @@
 from pathlib import Path
+import pprint
 from typing import Annotated
 
 import click
 import typer
 
 from ..utils.cli_utils import dataclass_cli
-from .band.params import BandParams
+from .band.params import BandParams, BandsParams
 from .calculate.params import InputParams
 from .dos.params import DosParams
 
@@ -203,3 +204,60 @@ def input(params: InputParams):
         potcar_input(atoms, params.__dict__, params.calcdir)
 
     print(f"VASP input files written to {params.calcdir}")
+
+
+@app.command("bands")
+@dataclass_cli
+def bands(bands_params: BandsParams):
+    data_files = list(bands_params.search_dir.rglob(bands_params.files))
+
+    from .band.bandplot import BandPlot
+    from dataclasses import replace
+
+    import matplotlib
+
+    matplotlib.use("qtagg")
+    import matplotlib.pyplot as plt
+
+    fig, ax = plt.subplots()
+    band_params = [replace(bands_params, file=data_file) for data_file in data_files]
+
+    if len(band_params) < 1:
+        print("your glob files don't match any file, check it!")
+        return
+
+    if bands_params.show:
+        num_figures = len(band_params)
+        current_index = [0]
+
+        def plot_func(band_params: list[BandsParams], index: int):
+            ax.clear()
+            _ = BandPlot(band_params[index], fig, ax)
+            ax.set_title(f"{band_params[index].file}")
+
+        plot_func(band_params, 0)
+        fig.canvas.draw()
+
+        def on_key(event):
+            if event.key == "right":
+                current_index[0] = (current_index[0] + 1) % num_figures
+            elif event.key == "left":
+                current_index[0] = (current_index[0] - 1) % num_figures
+            else:
+                return
+
+            plot_func(band_params, current_index[0])
+            fig.canvas.draw()
+
+        fig.canvas.mpl_connect("key_press_event", on_key)
+
+        plt.show()
+
+    if bands_params.save:
+        savedir = Path("figures")
+        savedir.mkdir(exist_ok=True)
+        for params in band_params:
+            fig, ax = plt.subplots()
+            _ = BandPlot(params, fig, ax)
+
+            plt.savefig(savedir / f"{params.file}.png".replace("/", "_"))
