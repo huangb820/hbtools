@@ -1,6 +1,6 @@
-# calctools
+# hbtools
 ## 介绍
-calctools现有功能可以处理VASP数据并画能带和态密度图，可以得到带隙以及谷极化。
+hbtools现有功能可以处理VASP数据并画能带和态密度图，可以得到带隙以及谷极化。
 
 ## 相关包
 
