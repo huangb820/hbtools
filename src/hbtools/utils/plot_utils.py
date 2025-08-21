@@ -275,7 +275,7 @@ def plot_from_cli_str(str_params: str, fig, ax):
     args = params_list[1:]
     app = importlib.import_module(f"hbtools.{info_name}.cli").app
 
-    print(params_list)
+    # print(params_list)
 
     cmd: click.Command = get_command(app)
     # print(cmd.make_context(info_name, args))
