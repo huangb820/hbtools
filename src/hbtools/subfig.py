@@ -25,7 +25,7 @@ def subfig(
                 import matplotlib.pyplot as plt
 
 
-                from calctools.utils.plot_utils import plot_from_cli_str
+                from hbtools.utils.plot_utils import plot_from_cli_str
 
                 fig, axs = plt.subplots(nrows={rows}, ncols={cols} {share})
                 axs = axs.flat

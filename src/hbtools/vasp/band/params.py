@@ -4,7 +4,7 @@ from typing import Annotated
 
 import click
 
-from calctools.utils.common_params import FigSetBase, HeatFigBase
+from hbtools.utils.common_params import FigSetBase, HeatFigBase
 
 
 import typer
