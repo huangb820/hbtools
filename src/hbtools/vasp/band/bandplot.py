@@ -21,13 +21,14 @@ if TYPE_CHECKING:
 
 
 @final
-class BandPlot:
+class BandPlot(plot_utils.FigPlotBase):
     def __init__(
         self,
         params: "BandParams",
         fig: figure.Figure,
         ax: plt.Axes,
     ):
+        super().__init__(params, fig, ax)
         self.params: "BandParams" = params
         self.fig, self.ax = fig, ax
 
