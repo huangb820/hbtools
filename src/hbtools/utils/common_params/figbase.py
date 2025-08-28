@@ -1,10 +1,18 @@
 import typer
+from pathlib import Path
 from typing import Annotated
 from dataclasses import dataclass
 
 
 @dataclass
 class FigSetBase:
+    matplotlibrc: Annotated[
+        Path,
+        typer.Option(
+            envvar="MXMF_MATPLOTLIBRC_FILE",
+            help="matplotlibrc style file",
+        ),
+    ] = Path("~/.config/hbtools/matplotlibrc")
     xrange: Annotated[
         tuple[float, float] | None,
         typer.Option(

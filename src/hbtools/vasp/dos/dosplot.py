@@ -7,6 +7,7 @@ import numpy as np
 from matplotlib import figure
 from matplotlib.patches import Polygon
 
+from hbtools.utils import plot_utils
 from hbtools.utils.plot_utils import AxesSet
 from .. import vasp_utils
 from ..dataread import Readvaspout, ReadVasprun
@@ -79,13 +80,14 @@ def gradient_fill(x, y, ax=None, fill_color=None, **kwargs):
     return line, im
 
 
-class DosPlot:
+class DosPlot(plot_utils.FigPlotBase):
     def __init__(
         self,
         params: "DosParams",
         fig: figure.Figure,
         ax: plt.Axes,
     ):
+        super().__init__(params, fig, ax)
         self.params, self.fig, self.ax = params, fig, ax
         self.fig_set()
         self.plot_tdos()
