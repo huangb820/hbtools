@@ -15,25 +15,10 @@ app = typer.Typer(no_args_is_help=True)
 @app.command("band")
 @dataclass_cli
 def band(params: BandParams):
-    # print(params)
     from ..utils import plot_utils
     from .band.bandplot import BandPlot
 
-    if params.from_cli is False:
-        return (BandPlot, params)
-
-    import matplotlib
-
-    matplotlib.use("qtagg")
-    import matplotlib.pyplot as plt
-    from matplotlib.axes import Axes
-    from matplotlib.figure import Figure
-
-    fig: Figure
-    ax: Axes
-    fig, ax = plt.subplots()
-    _ = BandPlot(params, fig, ax)
-    plot_utils.save_show(params)
+    return plot_utils.render_plot(BandPlot, params)
 
 
 @app.command("dos")
@@ -41,20 +26,10 @@ def band(params: BandParams):
 def dos(
     params: DosParams,
 ):
-    import matplotlib
-
     from ..utils import plot_utils
     from .dos.dosplot import DosPlot
 
-    matplotlib.use("qtagg")
-    if params.from_cli is False:
-        return (DosPlot, params)
-
-    import matplotlib.pyplot as plt
-
-    fig, ax = plt.subplots()
-    DosPlot(params, fig, ax)
-    plot_utils.save_show(params)
+    return plot_utils.render_plot(DosPlot, params)
 
 
 @app.command("nbands_ewin")

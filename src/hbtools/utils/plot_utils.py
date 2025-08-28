@@ -197,9 +197,34 @@ class HeatSet:
         cbar.ax.set_ylim(self.vmin, self.vmax)
 
 
-def save_show(params: "common_params.FigSetBase"):
+class FigPlotBase:
+    def __init__(
+        self, params: "common_params.FigSetBase", fig: "figure.Figure", ax: "plt.Axes"
+    ): ...
+
+
+def render_plot(
+    plot_cls: type[FigPlotBase],
+    params: "common_params.FigSetBase",
+):
+    from importlib import resources
+
+    import matplotlib as mpl
     import matplotlib.pyplot as plt
 
+    if params.matplotlibrc.exists():
+        mpl.rc_file(params.matplotlibrc)
+    else:
+        with resources.path("hbtools", "matplotlibrc") as rc_path:
+            if rc_path.exists():
+                mpl.rc_file(rc_path)
+
+    if params.from_cli is False:
+        return (plot_cls, params)
+
+    fig, ax = plt.subplots()
+
+    plot_cls(params, fig, ax)
     for savefile in params.save.split():
         plt.savefig(savefile)
     if params.show:
