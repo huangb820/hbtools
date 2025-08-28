@@ -1,5 +1,5 @@
-from pathlib import Path
 import pprint
+from pathlib import Path
 from typing import Annotated
 
 import click
@@ -7,7 +7,6 @@ import typer
 
 from ..utils.cli_utils import dataclass_cli
 from .band.params import BandParams, BandsParams
-from .calculate.params import InputParams
 from .dos.params import DosParams
 
 app = typer.Typer(no_args_is_help=True)
@@ -16,7 +15,7 @@ app = typer.Typer(no_args_is_help=True)
 @app.command("band")
 @dataclass_cli
 def band(params: BandParams):
-    #print(params)
+    # print(params)
     from ..utils import plot_utils
     from .band.bandplot import BandPlot
 
@@ -179,42 +178,16 @@ def get_valley_polarization(
     return get_valley_polarization(data.eigenvalues, data.fermi, vbms, point1, point2)
 
 
-@app.command("input")
-@dataclass_cli
-def input(params: InputParams):
-    from ..vasp.calculate.input import vasp_input
-
-    if params.from_cli is False:
-        return vasp_input(params.__dict__)
-
-    from ase.io import read
-
-    atoms = read(params.poscar)
-    if params.input_type == "incar":
-        from ..vasp.calculate.input import incar_input
-
-        incar_input(atoms, params.__dict__, params.calcdir)
-    elif params.input_type == "kpoints":
-        from ..vasp.calculate.input import kpoints_input
-
-        kpoints_input(atoms, params.__dict__, params.calcdir)
-    elif params.input_type == "potcar":
-        from ..vasp.calculate.input import potcar_input
-
-        potcar_input(atoms, params.__dict__, params.calcdir)
-
-    print(f"VASP input files written to {params.calcdir}")
-
-
 @app.command("bands")
 @dataclass_cli
 def bands(bands_params: BandsParams):
     data_files = list(bands_params.search_dir.rglob(bands_params.files))
 
-    from .band.bandplot import BandPlot
     from dataclasses import replace
 
     import matplotlib
+
+    from .band.bandplot import BandPlot
 
     matplotlib.use("qtagg")
     import matplotlib.pyplot as plt

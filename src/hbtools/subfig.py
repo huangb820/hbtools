@@ -41,7 +41,7 @@ def subfig(
         fo.write("\n")
 
         for i, j in itertools.product(range(rows), range(cols)):
-            fo.write(f'plot{i + 1}{j + 1}_args=  "vasp band vaspout.h5 -yr -2 2"\n')
+            fo.write(f'plot{i + 1}{j + 1}_args=  "plot band vaspout.h5 -yr -2 2"\n')
         fo.write("\n")
 
         for i, j in itertools.product(range(rows), range(cols)):

@@ -5,8 +5,6 @@ import os
 from ase import Atoms
 from pathlib import Path
 
-
-
 def vasp_input(atoms: Atoms, calc_params: dict, calcdir: Path):
     # add keys
     list_int_keys.append("ioptcell")
@@ -66,8 +64,34 @@ def kpoints_input(atoms: Atoms, calc_params: dict, calcdir: Path,):
     ase_input_gener = create_vasp_input(atoms, calc_params, calcdir)
     ase_input_gener.write_kpoints(atoms, directory=str(calcdir))
 
+
+def write_kpoints(work_dir: Path, k_type: str, directory: dict):
+    if k_type == "gamma":
+        with open(f"{work_dir}/KPOINTS", "w") as f:
+            f.write("KPOINTS created by hbtools\n")
+            f.write("Gamma\n")
+            f.write("0 0 0\n")
+            f.write("0 0 0\n")
+    elif k_type == "M":
+        with open(f"{work_dir}/KPOINTS", "w") as f:
+            f.write("KPOINTS created by hbtools\n")
+            f.write("Gamma\n")
+            f.write("0 0 0\n")
+            f.write("0 0 0\n")
+    elif k_type == "line":
+        with open(f"{work_dir}/KPOINTS", "w") as f:
+            f.write("KPOINTS created by hbtools\n")
+            f.write("50\n")
+            f.write("line-mode\n")
+            f.write("rec\n")
+
+
 # POTCAR
-def potcar_input(atoms: Atoms, calc_params: dict, calcdir: Path,):
+def potcar_input(
+    atoms: Atoms,
+    calc_params: dict,
+    calcdir: Path,
+):
     # make calculate directory
     calcdir.mkdir(parents=True, exist_ok=True) if not calcdir.exists() else ...
     # write potcar

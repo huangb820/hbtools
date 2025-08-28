@@ -1,5 +1,5 @@
 dist/
 *.pyc
-tests/
+test/
 .venv
 .vscode/
