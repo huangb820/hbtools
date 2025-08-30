@@ -7,9 +7,7 @@ from typing import Annotated
 
 
 @dataclass
-class InputParams:
-    # 写死的高对称点（可扩展）
-    # 默认参数
+class POTCARParams:
     work_dir: Annotated[
         Path, typer.Option("-wd", "--work-dir", help="work directory")
     ] = Path(".")
@@ -21,7 +19,33 @@ class InputParams:
         typer.Option(
             "-of", "--output_filename", help="output filename : INCAR, POTCAR, KPOINTS."
         ),
-    ] = None # type: ignore
+    ] = "POTCAR"
+    pseudo_dir: Annotated[
+        Path | None, typer.Option("-pd", "--pseudo-dir", help="POTCAR pseudo potential directory")
+    ] = None
+    pseudo_type: Annotated[str, typer.Option("-pt", "--pseudo-type", help="POTCAR pseudo potential type")] = "PAW"
+    pseudo_functional: Annotated[str | None, typer.Option("-pf", "--pseudo-functional", help="POTCAR pseudo potential functional")] = None
+    select_elements:Annotated[str | None,typer.Option("-se","--select-elements",help="select elements, e.g. 'C O H' (default: read POSCAR)")] = None
+
+
+
+
+@dataclass
+class InputParams:
+    # 写死的高对称点（可扩展）
+    # 默认参数
+    work_dir: Annotated[
+        Path, typer.Option("-wd", "--work-dir", help="work directory")
+    ] = Path(".")
+    input_filename: Annotated[
+        str, typer.Option("-if", "--input-file", help="input filename")
+    ] = "POSCAR"
+    output_filename: Annotated[
+        str | None,
+        typer.Option(
+            "-of", "--output_filename", help="output filename : INCAR, POTCAR, KPOINTS."
+        ),
+    ] = None
     sp_symprec: Annotated[
         float,
         typer.Option("-ss", "--sp-symprec", help="symmetry precision for spacegroup"),
