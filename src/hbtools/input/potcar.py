@@ -6,17 +6,19 @@ from .params import POTCARParams
 from rich.console import Console
 from rich.table import Table
 import typer
+import rtoml
+
 
 console = Console()
 CONFIG_DIR = Path.home() / ".config" / "hbtools"
-CONFIG_FILE = CONFIG_DIR / "vasp_input.json"
+CONFIG_FILE = CONFIG_DIR / "vasp_input.toml"
 
 def init_config(main_file:Path= CONFIG_DIR):
     """
     初始化 VASP 输入配置文件，设置 PBE/GGA/LDA 三类 POTCAR 赝势路径。
     """
     main_file.parent.mkdir(parents=True, exist_ok=True)
-    config_path = main_file / "vasp_input.json"
+    config_path = main_file / "vasp_input.toml"
 
     # 如果配置文件已存在，询问是否覆盖
     if config_path.exists():
@@ -65,7 +67,7 @@ def init_config(main_file:Path= CONFIG_DIR):
     }
 
     with open(config_path, "w") as file:
-        json.dump(input_dict, file, indent=4)
+        rtoml.dump(input_dict, file)
 
     typer.echo(f"配置文件已创建: {config_path}")
 

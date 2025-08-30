@@ -11,6 +11,7 @@ app = typer.Typer(no_args_is_help=True)
 
 
 @app.command("init")
+@dataclass_cli
 def init_config(params:POTCARParams):
     from .potcar import init_config
     init_config()
