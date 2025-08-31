@@ -1,18 +1,20 @@
-import typer
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Annotated
-from dataclasses import dataclass
+
+import typer
 
 
 @dataclass
 class FigSetBase:
+    file: Annotated[str, typer.Argument(exists=True)]
     matplotlibrc: Annotated[
         Path,
         typer.Option(
             envvar="MXMF_MATPLOTLIBRC_FILE",
             help="matplotlibrc style file",
         ),
-    ] = Path("~/.config/hbtools/matplotlibrc")
+    ] = Path("~/.config/mxmftools/matplotlibrc")
     xrange: Annotated[
         tuple[float, float] | None,
         typer.Option(
@@ -131,10 +133,10 @@ class FigSetBase:
         str,
         typer.Option(
             "--save",
-            help="figure save name",
+            help="figure save name or directory",
             rich_help_panel="figure set",
         ),
-    ] = "Figure.png"
+    ] = ""
 
     from_cli: Annotated[
         bool,

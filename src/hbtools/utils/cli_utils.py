@@ -2,7 +2,7 @@ import os
 import dataclasses
 import inspect
 import sys
-from typing import no_type_check
+from typing import Any, Callable, Type, TypeVar, cast
 
 """
     
@@ -26,8 +26,12 @@ def _autocomplete_is_resolving_command(command: str) -> bool:
     return command in os.environ.get("_TYPER_COMPLETE_ARGS", "")
 
 
-@no_type_check
-def dataclass_cli(func):
+T = TypeVar("T")
+R = TypeVar("R")
+
+
+
+def dataclass_cli(func: Callable[[T], R]) -> Callable[..., R]:
     """Converts a function taking a dataclass as its first argument into a
     dataclass that can be called via `typer` as a CLI.
 
@@ -37,17 +41,16 @@ def dataclass_cli(func):
     # The dataclass type is the first argument of the function.
     sig = inspect.signature(func)
     param = list(sig.parameters.values())[0]
-    cls = param.annotation
+    cls: Type[T] = param.annotation
     assert dataclasses.is_dataclass(cls)
 
-    @no_type_check
-    def wrapped(**conf):
+    def wrapped(**conf: Any) -> R:
         # Load the config file if specified.
 
         # CLI options override the config file.
 
         # Convert back to the original dataclass type.
-        arg = cls(**conf)
+        arg = cast(T, cls(**conf))
 
         # Actually call the entry point function.
         return func(arg)
@@ -56,13 +59,16 @@ def dataclass_cli(func):
     # from the dataclass __init__ signature.
     signature = inspect.signature(cls.__init__)
     parameters = list(signature.parameters.values())
+
     if len(parameters) > 0 and parameters[0].name == "self":
         del parameters[0]
 
-    # The new signature is compatible with the **kwargs argument.
-    wrapped.__signature__ = signature.replace(parameters=parameters)
+    setattr(wrapped, "__signature__", signature.replace(parameters=parameters))
 
-    # The docstring is used for the explainer text in the CLI.
-    wrapped.__doc__ = func.__doc__ + "\n" + "" if func.__doc__ is not None else ...
+    setattr(
+        wrapped,
+        "__doc__",
+        func.__doc__ + "\n" + "" if func.__doc__ is not None else ...,
+    )
 
     return wrapped

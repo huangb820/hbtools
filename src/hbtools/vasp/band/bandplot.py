@@ -1,35 +1,127 @@
 import itertools
 import sys
 from functools import cached_property
-from typing import TYPE_CHECKING, final
 
 import matplotlib as mpl
-import matplotlib.pyplot as plt
 import numpy as np
-from matplotlib import figure
+import numpy.typing as npt
+from matplotlib import axes, figure
 from matplotlib.collections import LineCollection
-from numpy._core.multiarray import DATETIMEUNITS
 
 from ...utils import plot_utils
-
-# from .. import vasp_utils
-from ..dataread import Readvaspout, ReadVasprun
 from .. import vasp_utils
+from ..dataread import ReadVaspout, ReadVasprun
+from .params import BandParams
 
-if TYPE_CHECKING:
-    from .params import BandParams
+
+class BandData(ReadVaspout, ReadVasprun):
+    def __init__(self, params: BandParams):
+        self.params = params
+        if self.params.vaspfileformat == "h5":
+            self.reader = ReadVaspout(self.params.file, auto_select_k=True)
+        else:
+            self.reader = ReadVasprun(self.params.file, auto_select_k=True)
+
+        if self.params.fix_order:
+            self.eigenvalues = np.sort(self.eigenvalues, axis=2)
+
+        if self.params.export:
+            self.save()
+
+    def __getattr__(self, name: str):
+        return getattr(self.reader, name)
+
+    @cached_property
+    def xlist(self) -> list[float]:
+        kpoints_real = [np.dot(kpoint, self.rec_cell) for kpoint in self.kpoints]
+
+        length = (
+            np.linalg.norm(kpoint1 - kpoint2)
+            for kpoint1, kpoint2 in zip(
+                kpoints_real, kpoints_real[0:1] + list(kpoints_real)[:-1]
+            )
+        )
+        return [float(i) * np.pi * 2 for i in itertools.accumulate(length)]
+
+    @cached_property
+    def ylist(self) -> npt.NDArray[np.floating]:
+        if self.params.efermi is None:
+            return self.eigenvalues - self.fermi
+        else:
+            return self.eigenvalues - self.params.efermi
+
+    @cached_property
+    def proarray_list(self) -> list[npt.NDArray[np.floating]]:
+        if self.params.pro_atoms_orbitals is None:
+            return []
+        self.projected
+        return [
+            np.sum(
+                [
+                    self.projected[:, atom, orbital, :, :]
+                    for atom, orbital in vasp_utils.ParsePro(
+                        self,
+                        atom_orbital_str,
+                        self.params.colors.split()[i],
+                        i,
+                    ).result
+                ],
+                axis=0,
+            )
+            for i, atom_orbital_str in enumerate(self.params.pro_atoms_orbitals)
+        ]
+
+    def save(self):
+        filenames = ["band_up.txt", "band_down.txt"]
+        for i, eigen in enumerate(self.eigenvalues):
+            self.save_band(filenames[i], eigen)
+        self.save_pro_band()
+
+    def save_band(
+        self,
+        filename: str,
+        eigen: npt.NDArray[np.floating],
+        weight: npt.NDArray[np.floating] | None = None,
+    ):
+        with open(filename, "w") as f:
+            for i in range(eigen.shape[1]):  # 遍历每条能带
+                if weight is None:
+                    data = np.column_stack((self.xlist, eigen[:, i]))
+                else:
+                    data = np.column_stack((self.xlist, eigen[:, i], weight[:, i]))
+
+                np.savetxt(f, data, fmt="%.10f")
+                f.write("\n")
+
+    def save_pro_band(self):
+        spins: list[int] = []
+        if self.params.spin is None:
+            if len(self.eigenvalues) == 1:
+                spins = [0]
+            elif len(self.eigenvalues) == 2:
+                spins = [0, 1]
+            elif len(self.eigenvalues) == 4:
+                spins[0]
+        else:
+            spin = [self.params.spin]
+
+        for spin in spins:
+            eigen = self.eigenvalues[int(spin)]
+            for i, pro in enumerate(self.proarray_list):
+                weight = pro[spin]
+                self.save_band(f"fatband_spin{spin}_{i}.txt", eigen, weight)
 
 
-@final
 class BandPlot(plot_utils.FigPlotBase):
     def __init__(
         self,
-        params: "BandParams",
+        params: BandParams,
         fig: figure.Figure,
-        ax: plt.Axes,
+        ax: axes.Axes,
     ):
         super().__init__(params, fig, ax)
-        self.params: "BandParams" = params
+        self.data: BandData = BandData(params)
+        self.params: BandParams = params
         self.fig, self.ax = fig, ax
 
         self.fermi = (
@@ -57,42 +149,8 @@ class BandPlot(plot_utils.FigPlotBase):
             ]
             self.ax.legend(*zip(*unique), loc="best")
 
-    @cached_property
-    def data(self) -> ReadVasprun | Readvaspout:
-        if self.params.vaspfileformat == "h5":
-            data = Readvaspout(self.params.file, auto_select_k=True)
-        else:
-            data = ReadVasprun(self.params.file, auto_select_k=True)
-        if self.params.fix_order:
-            data.eigenvalues = np.sort(data.eigenvalues, axis=2)
-
-        return data
-
-    @cached_property
-    def xlist(self):
-        kpoints_real = [
-            np.dot(kpoint, self.data.rec_cell) for kpoint in self.data.kpoints
-        ]
-
-        length = (
-            np.linalg.norm(kpoint1 - kpoint2)
-            for kpoint1, kpoint2 in zip(
-                kpoints_real, kpoints_real[0:1] + list(kpoints_real)[:-1]
-            )
-        )
-
-        return [float(i) * np.pi * 2 for i in itertools.accumulate(length)]
-
-    @cached_property
-    def ylist(self):
-        if self.params.efermi is None:
-            return self.data.eigenvalues - self.data.fermi
-        else:
-            return self.data.eigenvalues - self.params.efermi
-
     def fig_set(self):
-        # self.set_xticks_and_labels()
-        BandAxesSet(self.ax, self.params, self.data, self.xlist)
+        BandAxesSet(self.ax, self.params, self.data)
         y_major_tick_size = mpl.rcParams["ytick.major.size"]
         self.ax.axhline(
             0,
@@ -103,37 +161,19 @@ class BandPlot(plot_utils.FigPlotBase):
         )
 
     @cached_property
-    def proarray_list(self):
-        # result: list[np.ndarray] = []
-        result = []
-        assert self.params.pro_atoms_orbitals is not None
-        for i, atom_orbital_str in enumerate(self.params.pro_atoms_orbitals):
-            result.append(
-                sum(
-                    self.data.projected[:, atom, orbital, :, :]
-                    for atom, orbital in vasp_utils.ParsePro(
-                        self.data, atom_orbital_str, self.params.colors.split()[i], i
-                    ).result
-                )
-            )  # print(ParsePro(self.data, atom_orbital_str).result
-
-        ...
-        return result
-
-    @cached_property
     def lc(self) -> LineCollection:
-        y_repeat = self.ylist.repeat(2, axis=1)
+        y_repeat = self.data.ylist.repeat(2, axis=1)
         yarray = (y_repeat[:, :-1, :] + y_repeat[:, 1:, :]) / 2
         ylist_left = yarray[:, :-1, :].transpose(0, 2, 1).reshape(-1)
         ylist_right = yarray[:, 1:, :].transpose(0, 2, 1).reshape(-1)
 
-        x_repeat = np.array(self.xlist).repeat(2)
+        x_repeat = np.array(self.data.xlist).repeat(2)
         xarray = (x_repeat[:-1] + x_repeat[1:]) / 2
         xlist_left = np.array(
-            list(xarray[:-1]) * self.ylist.shape[0] * self.ylist.shape[2]
+            list(xarray[:-1]) * self.data.ylist.shape[0] * self.data.ylist.shape[2]
         )
         xlist_right = np.array(
-            list(xarray[1:]) * self.ylist.shape[0] * self.ylist.shape[2]
+            list(xarray[1:]) * self.data.ylist.shape[0] * self.data.ylist.shape[2]
         )
 
         left = np.stack((xlist_left, xlist_right), axis=1)
@@ -148,11 +188,10 @@ class BandPlot(plot_utils.FigPlotBase):
         labels = (
             ["↑", "↓"] if self.params.labels is None else self.params.labels.split(";")
         )
-        print(labels)
         if self.params.spin is None:
-            for i, y in enumerate(self.ylist):
+            for i, y in enumerate(self.data.ylist):
                 self.ax.plot(
-                    self.xlist,
+                    self.data.xlist,
                     y,
                     c=self.params.colors.split()[i],
                     zorder=2,
@@ -160,8 +199,8 @@ class BandPlot(plot_utils.FigPlotBase):
                 )
         else:
             self.ax.plot(
-                self.xlist,
-                self.ylist[self.params.spin],
+                self.data.xlist,
+                self.data.ylist[self.params.spin],
                 c=self.params.colors.split()[0],
                 zorder=2,
                 label=labels[self.params.spin],
@@ -176,7 +215,7 @@ class BandPlot(plot_utils.FigPlotBase):
 
     def scatter_proplot(self):
         scatter_xlist = np.tile(
-            self.xlist, (len(self.data.projected), self.data.nbands, 1)
+            self.data.xlist, (len(self.data.projected), self.data.nbands, 1)
         ).transpose(0, 2, 1)
         assert self.params.pro_atoms_orbitals is not None
 
@@ -185,10 +224,10 @@ class BandPlot(plot_utils.FigPlotBase):
             if self.params.labels is None
             else self.params.labels.split(";")
         )
-        if len(labels) != len(self.proarray_list):
+        if len(labels) != len(self.data.proarray_list):
             print("labels must have same length with pros")
             sys.exit()
-        for i, proarray in enumerate(self.proarray_list):
+        for i, proarray in enumerate(self.data.proarray_list):
             if self.params.hollow:
                 ec = self.params.colors.split()[i]
                 fc = "white"
@@ -198,7 +237,7 @@ class BandPlot(plot_utils.FigPlotBase):
             if self.params.spin is not None and len(self.data.projected) == 4:
                 self.ax.scatter(
                     scatter_xlist[self.params.spin],
-                    self.ylist[0],
+                    self.data.ylist[0],
                     s=abs(proarray[self.params.spin]) * self.params.scale,
                     ec=ec,
                     fc=fc,
@@ -207,7 +246,7 @@ class BandPlot(plot_utils.FigPlotBase):
             elif self.params.spin is not None and len(self.data.projected) != 4:
                 self.ax.scatter(
                     scatter_xlist[self.params.spin],
-                    self.ylist[self.params.spin],
+                    self.data.ylist[self.params.spin],
                     s=proarray[self.params.spin] * self.params.scale,
                     ec=ec,
                     fc=fc,
@@ -216,7 +255,7 @@ class BandPlot(plot_utils.FigPlotBase):
             elif self.params.spin is None and len(self.data.projected) == 4:
                 self.ax.scatter(
                     scatter_xlist[0],
-                    self.ylist[0],
+                    self.data.ylist[0],
                     s=proarray[0] * self.params.scale,
                     ec=ec,
                     fc=fc,
@@ -225,7 +264,7 @@ class BandPlot(plot_utils.FigPlotBase):
             else:
                 self.ax.scatter(
                     scatter_xlist,
-                    self.ylist,
+                    self.data.ylist,
                     s=proarray * self.params.scale,
                     ec=ec,
                     fc=fc,
@@ -233,10 +272,10 @@ class BandPlot(plot_utils.FigPlotBase):
                 )
 
     def lc_proplot(self):
-        if len(self.proarray_list) > 1:
+        if len(self.data.proarray_list) > 1:
             print("LineCollection only support 1 pro")
             sys.exit()
-        proarray = self.proarray_list[0]
+        proarray = self.data.proarray_list[0]
 
         if self.params.spin is not None:
             proarray = proarray[self.params.spin : self.params.spin + 1]
@@ -260,8 +299,7 @@ class BandPlot(plot_utils.FigPlotBase):
 
 
 class BandAxesSet(plot_utils.AxesSet):
-    def __init__(self, ax: plt.Axes, parmas: "BandParams", data, xlist):
-        self.xlist = xlist
+    def __init__(self, ax: axes.Axes, parmas: BandParams, data: BandData):
         self.data = data
         super().__init__(ax, parmas)
 
@@ -275,7 +313,7 @@ class BandAxesSet(plot_utils.AxesSet):
                 return symbol
 
         def handle_kpoint_labels(klist: list[str]) -> list[str]:
-            result = []
+            result: list[str] = []
             result.append(symbol_to_latex(klist[0]))
             for k1, k2 in zip(klist[2::2], klist[1:-1:2]):
                 k1, k2 = symbol_to_latex(k1), symbol_to_latex(k2)
@@ -287,13 +325,13 @@ class BandAxesSet(plot_utils.AxesSet):
             return result
 
         if self.params.xticks is not None:
-            xticks = [self.xlist[int(i)] for i in self.params.xticks.split()]
+            xticks = [self.data.xlist[int(i)] for i in self.params.xticks.split()]
         else:
             if self.data.kpoints_division is None:
                 # TODO
                 xticks = []
             else:
-                xticks = ([0.0] + self.xlist)[:: self.data.kpoints_division]
+                xticks = ([0.0] + self.data.xlist)[:: self.data.kpoints_division]
         if self.params.xticklabels is not None:
             xticklabels = self.params.xticklabels.split()
         else:
@@ -312,6 +350,7 @@ class BandAxesSet(plot_utils.AxesSet):
     def set_lims(self):
         assert self.params.xrange is not None
         self.ax.set_xlim(
-            self.xlist[self.params.xrange[0]], self.xlist[self.params.xrange[1]]
+            self.data.xlist[int(self.params.xrange[0])],
+            self.data.xlist[int(self.params.xrange[1])],
         )
         self.ax.set_ylim(*self.params.yrange) if self.params.yrange is not None else ...

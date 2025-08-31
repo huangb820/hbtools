@@ -1,33 +1,40 @@
 import sys
 from functools import cached_property
+from typing import Any
 
-import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
+from matplotlib.typing import ColorType
 import numpy as np
-from matplotlib import figure
+from matplotlib import figure, axes, colors
 from matplotlib.patches import Polygon
 
-from hbtools.utils import plot_utils
 from hbtools.utils.plot_utils import AxesSet
 from .. import vasp_utils
-from ..dataread import Readvaspout, ReadVasprun
+from ...utils import plot_utils
+from ..dataread import ReadVaspout, ReadVasprun, VaspData
 from .params import DosParams
 
 
-def fillplot(x, y, ax=None, **kwargs):
+def fillplot(x: np.ndarray, y: np.ndarray, ax: axes.Axes | None = None, **kwargs: Any):
     if ax is None:
         ax = plt.gca()
     ax.fill(x, y, **kwargs)
 
 
-def lineplot(x, y, ax=None, **kwargs):
+def lineplot(x: np.ndarray, y: np.ndarray, ax: axes.Axes | None = None, **kwargs: Any):
     if ax is None:
         ax = plt.gca()
     ax.plot(x, y, **kwargs)
 
 
 # copy from https://stackoverflow.com/questions/29321835/is-it-possible-to-get-color-gradients-under-curve-in-matplotlib
-def gradient_fill(x, y, ax=None, fill_color=None, **kwargs):
+def gradient_fill(
+    x: np.ndarray,
+    y: np.ndarray,
+    ax: axes.Axes | None = None,
+    fill_color: None | ColorType = None,
+    **kwargs: Any,
+):
     """
     Plot a line with a linear alpha gradient filled beneath it.
 
@@ -60,14 +67,14 @@ def gradient_fill(x, y, ax=None, fill_color=None, **kwargs):
     alpha = 1.0 if alpha is None else alpha
 
     z = np.empty((100, 1, 4), dtype=float)
-    rgb = mcolors.colorConverter.to_rgb(fill_color)
+    rgb = colors.colorConverter.to_rgb(fill_color)
     z[:, :, :3] = rgb
     z[:, :, -1] = np.linspace(0, alpha, 100)[:, None]
     xmin, xmax, ymin, ymax = x.min(), x.max(), y.min(), y.max()
     if ymin < 0:
         ymin, ymax = ymax, ymin
     im = ax.imshow(
-        z, aspect="auto", extent=[xmin, xmax, ymin, ymax], origin="lower", zorder=zorder
+        z, aspect="auto", extent=(xmin, xmax, ymin, ymax), origin="lower", zorder=zorder
     )
 
     xy = np.column_stack([x, y])
@@ -85,7 +92,7 @@ class DosPlot(plot_utils.FigPlotBase):
         self,
         params: "DosParams",
         fig: figure.Figure,
-        ax: plt.Axes,
+        ax: axes.Axes,
     ):
         super().__init__(params, fig, ax)
         self.params, self.fig, self.ax = params, fig, ax
@@ -97,9 +104,9 @@ class DosPlot(plot_utils.FigPlotBase):
             self.ax.legend(loc="best")
 
     @cached_property
-    def data(self) -> ReadVasprun | Readvaspout:
+    def data(self) -> VaspData:
         if self.params.vaspfileformat == "h5":
-            data = Readvaspout(self.params.file)
+            data = ReadVaspout(self.params.file)
         else:
             data = ReadVasprun(self.params.file)
         return data
@@ -117,22 +124,27 @@ class DosPlot(plot_utils.FigPlotBase):
 
     @cached_property
     def pdos_list(self):
-        # result: list[np.ndarray] = []
-        result = []
+        result: list[np.ndarray] = []
         assert self.params.pro_atoms_orbitals is not None
 
         for i, atom_orbital_str in enumerate(self.params.pro_atoms_orbitals):
             result.append(
-                sum(
-                    self.data.dospar[:, atom, orbital, :]
-                    for atom, orbital in vasp_utils.ParsePro(
-                        self.data, atom_orbital_str, self.params.colors.split()[i], i
-                    ).result
+                np.sum(
+                    [
+                        self.data.dospar[:, atom, orbital, :]
+                        for atom, orbital in vasp_utils.ParsePro(
+                            self.data,
+                            atom_orbital_str,
+                            self.params.colors.split()[i],
+                            i,
+                        ).result
+                    ],
+                    axis=0,
                 )
             )
         return result
 
-    def __plotdos(self, dos, **kwargs):
+    def _plotdos(self, dos: np.ndarray, **kwargs: Any):
         if self.params.pmode == 1:
             plot = lineplot
         elif self.params.pmode == 2:
@@ -151,10 +163,8 @@ class DosPlot(plot_utils.FigPlotBase):
 
     def plot_tdos(self):
         if self.params.tdos:
-            tlabel = (
-                self.params.tdos_label if self.params.tdos_label is not None else "TDOS"
-            )
-            self.__plotdos(
+            tlabel = self.params.tdos_label
+            self._plotdos(
                 self.total_dos,
                 ax=self.ax,
                 color=self.params.tcolor,
@@ -173,7 +183,7 @@ class DosPlot(plot_utils.FigPlotBase):
             print("labels must have same length with pros")
             sys.exit()
         for i, pdos in enumerate(self.pdos_list):
-            self.__plotdos(
+            self._plotdos(
                 pdos,
                 ax=self.ax,
                 color=self.params.colors.split()[i],

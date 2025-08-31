@@ -1,36 +1,40 @@
-from typing import TYPE_CHECKING
+from pathlib import Path
+from typing import cast
 
-if TYPE_CHECKING:
-    import sys
+from matplotlib import axes, colors, figure
+from matplotlib.cm import ScalarMappable
+from matplotlib.backend_bases import KeyEvent
 
-    import matplotlib.pyplot as plt
-    import numpy as np
-    from matplotlib import figure
+from typing_extensions import override
 
-    # from ..cli import utils as cliutils
-    from . import common_params
-
-import matplotlib as mpl
+from .common_params import FigSetBase, HeatFigBase
 
 
-class MyCustomNormalize(mpl.colors.Normalize):
+class MyCustomNormalize(colors.Normalize):
     """
     Modified from https://stackoverflow.com/questions/7404116/defining-the-midpoint-of-a-colormap-in-matplotlib
     """
 
-    def __init__(self, vmin, vmax, midpoint=0.0, clip=False):
-        self.midpoint = midpoint
-        mpl.colors.Normalize.__init__(self, vmin, vmax, clip)
+    def __init__(
+        self, vmin: float, vmax: float, midpoint: float = 0.0, clip: bool = False
+    ):
+        self.midpoint: float = midpoint
+        colors.Normalize.__init__(self, vmin, vmax, clip)
 
-    def __call__(self, value, clip=None):
+    @override
+    def __call__(self, value: float, clip: bool | None = None):  # type:ignore
+        vmin = cast(float, self.vmin)
+        vmax = cast(float, self.vmax)
         import numpy as np
+
+        if vmin == vmax:
+            return np.full_like(value, 0.5, dtype=np.float64)
+        midpoint = self.midpoint
 
         normalized_min = (
             max(
                 0,
-                1
-                / 2
-                * (1 - abs((self.midpoint - self.vmin) / (self.midpoint - self.vmax))),
+                1 / 2 * (1 - abs((midpoint - vmin) / (midpoint - vmax))),
             )
             if (self.midpoint != self.vmax)
             else 0
@@ -38,25 +42,23 @@ class MyCustomNormalize(mpl.colors.Normalize):
         normalized_max = (
             min(
                 1,
-                1
-                / 2
-                * (1 + abs((self.vmax - self.midpoint) / (self.midpoint - self.vmin))),
+                1 / 2 * (1 + abs((vmax - midpoint) / (midpoint - vmin))),
             )
             if (self.midpoint != self.vmin)
             else 1.0
         )
         normalized_mid = 0.5
         x, y = (
-            [self.vmin, self.midpoint, self.vmax],
+            np.array([self.vmin, self.midpoint, self.vmax]),
             [normalized_min, normalized_mid, normalized_max],
         )
         return np.ma.masked_array(np.interp(value, x, y))
 
 
 class AxesSet:
-    def __init__(self, ax: "plt.Axes", params: "common_params.FigSetBase"):
-        self.ax = ax
-        self.params = params
+    def __init__(self, ax: axes.Axes, params: FigSetBase):
+        self.ax: axes.Axes = ax
+        self.params: FigSetBase = params
         self.set_title()
         self.set_labels()
         self.set_xticks()
@@ -66,7 +68,6 @@ class AxesSet:
 
     def set_title(self):
         self.ax.set_title(self.params.title) if self.params.title is not None else ...
-        ...
 
     def set_labels(self):
         self.ax.set_xlabel(
@@ -116,26 +117,25 @@ class AxesSet:
 class HeatSet:
     def __init__(
         self,
-        im,
-        fig: "figure.Figure",
-        ax: "plt.Axes",
-        params: "common_params.HeatFigBase",
+        im: ScalarMappable,
+        # im: AxesImage | QuadMesh | ScalarMappable,
+        fig: figure.Figure,
+        ax: axes.Axes,
+        params: HeatFigBase,
         vmin: float,
         vmax: float,
     ) -> None:
-        import colorcet  # noqa: F401
-
-        self.fig = fig
-        self.ax = ax
-        self.params = params
+        self.fig: figure.Figure = fig
+        self.ax: axes.Axes = ax
+        self.params: "HeatFigBase" = params
+        self.vmin: float
+        self.vmax: float
         if self.params.vrange is not None:
             self.vmin, self.vmax = self.params.vrange
         else:
             self.vmin, self.vmax = vmin, vmax
-        self.vcenter = self.params.vcenter
+        self.vcenter: float = self.params.vcenter
         self.im = im
-
-        ##
         self.set_norm()
         self.im.set_cmap(self.params.cmap)
         if self.params.colorbar:
@@ -143,25 +143,28 @@ class HeatSet:
 
     def set_norm(self):
         if self.params.norm == "Normal":
-            norm = mpl.colors.Normalize(self.vmin, self.vmax)
+            norm = colors.Normalize(self.vmin, self.vmax)
         elif self.params.norm == "Logarithmic":
             if self.vmin < 0:
-                print("Logarithmic Normalization doesn't support negative values")
-                sys.exit()
-            norm = mpl.colors.LogNorm(self.vmin, self.vmax)
+                raise ValueError(
+                    "Logarithmic Normalization doesn't support negative values"
+                )
+            norm = colors.LogNorm(self.vmin, self.vmax)
         elif self.params.norm == "Centered":
-            norm = mpl.colors.CenteredNorm(self.vcenter)
+            norm = colors.CenteredNorm(self.vcenter)
         elif self.params.norm == "SymmetricLogarithmic":
-            norm = mpl.colors.SymLogNorm(
+            norm = colors.SymLogNorm(
                 linthresh=self.params.symlogparm[0],
                 linscale=self.params.symlogparm[1],
                 vmin=self.vmin,
                 vmax=self.vmax,
             )
         elif self.params.norm == "TwoSlopeNorm":
-            norm = mpl.colors.TwoSlopeNorm(self.vmin, self.vcenter, self.vmax)
+            norm = colors.TwoSlopeNorm(
+                vmin=self.vmin, vcenter=self.vcenter, vmax=self.vmax
+            )
         elif self.params.norm == "PowerLaw":
-            norm = mpl.colors.PowerNorm(self.params.power, self.vmin, self.vmax)
+            norm = colors.PowerNorm(self.params.power, self.vmin, self.vmax)
         else:
             norm = MyCustomNormalize(self.vmin, self.vmax, self.vcenter)
         self.im.set_norm(norm)
@@ -188,8 +191,7 @@ class HeatSet:
             cticklabels: list[str] = [f"{i:.2f}" for i in cticks]
 
         if len(cticks) != len(cticklabels):
-            print("must have same length!")
-            sys.exit()
+            raise ValueError("cticks and cticklabels must have same length")
 
         cbar.set_ticks(cticks)
         cbar.set_ticklabels(cticklabels)
@@ -198,31 +200,37 @@ class HeatSet:
 
 
 class FigPlotBase:
-    def __init__(
-        self, params: "common_params.FigSetBase", fig: "figure.Figure", ax: "plt.Axes"
-    ): ...
+    def __init__(self, params: FigSetBase, fig: figure.Figure, ax: axes.Axes): ...
 
 
-def render_plot(
-    plot_cls: type[FigPlotBase],
-    params: "common_params.FigSetBase",
-):
+def set_style(rc_file: Path | None = None):
     from importlib import resources
 
     import matplotlib as mpl
-    import matplotlib.pyplot as plt
 
-    if params.matplotlibrc.exists():
-        mpl.rc_file(params.matplotlibrc)
-    else:
+    if rc_file is None or not rc_file.exists():
         with resources.path("hbtools", "matplotlibrc") as rc_path:
             if rc_path.exists():
                 mpl.rc_file(rc_path)
+    else:
+        mpl.rc_file(rc_file)
+
+
+def render_and_save(
+    plot_cls: type[FigPlotBase],
+    params: FigSetBase,
+    fig: figure.Figure | None,
+    ax: axes.Axes | None,
+):
+    import matplotlib.pyplot as plt
 
     if params.from_cli is False:
         return (plot_cls, params)
 
-    fig, ax = plt.subplots()
+    if fig is None and ax is None:
+        fig, ax = plt.subplots()
+    if fig is None or ax is None:
+        raise ValueError("must set fig and ax")
 
     plot_cls(params, fig, ax)
     for savefile in params.save.split():
@@ -231,62 +239,7 @@ def render_plot(
         plt.show()
 
 
-def dorotation(x_mesh, y_mesh, rot_deg: float = 0.0):
-    """
-    Generate a meshgrid and rotate it by rot_rad radians.
-    copy from https://stacjoverflow.com/questions/29708840/rotate-meshgrid-with-numpy
-    """
-    import numpy as np
-
-    rot_rad = np.deg2rad(rot_deg)
-    # Clocjwise, 2D rotation matrix
-    RotMatrix = np.array(
-        [[np.cos(rot_rad), np.sin(rot_rad)], [-np.sin(rot_rad), np.cos(rot_rad)]]
-    )
-    return np.einsum("ji, mni -> jmn", RotMatrix, np.dstack([x_mesh, y_mesh]))
-
-
-def dorotation_points(points, rot_deg):
-    import numpy as np
-
-    rot_rad = np.deg2rad(rot_deg)
-    RotMatrix = np.array(
-        [[np.cos(rot_rad), np.sin(rot_rad)], [-np.sin(rot_rad), np.cos(rot_rad)]]
-    )
-    return [np.dot(RotMatrix, i) for i in points]
-
-
-def expand_mesh(
-    x_mesh: "np.ndarray", y_mesh: "np.ndarray", z_mesh: "np.ndarray", expand_factor: int
-):
-    import math
-
-    import numpy as np
-
-    def expandij(original: np.ndarray, i: int, j: int):
-        x_add = np.vstack(
-            [original[:, -1] - original[:, 0]] * original.shape[0]
-        ).transpose()
-        y_add = np.vstack([original[-1, :] - original[0, :]] * original.shape[1])
-        return original + x_add * j + y_add * i
-
-    expand_x_list = list([] for i in range(expand_factor))
-    expand_y_list = list([] for i in range(expand_factor))
-    expand_z_list = list([] for i in range(expand_factor))
-
-    for i in range(math.ceil(-expand_factor / 2), math.ceil(expand_factor / 2)):
-        for j in range(math.ceil(-expand_factor / 2), math.ceil(expand_factor / 2)):
-            expand_x_list[i].append(expandij(x_mesh, i, j))
-            expand_y_list[i].append(expandij(y_mesh, i, j))
-            expand_z_list[i].append(z_mesh)
-
-    expand_x_mesh = np.sort(np.block(expand_x_list), 0)
-    expand_y_mesh = np.sort(np.block(expand_y_list), 0)
-    expand_z_mesh = np.block(expand_z_list)
-    return expand_x_mesh, expand_y_mesh, expand_z_mesh
-
-
-def plot_from_cli_str(str_params: str, fig, ax):
+def plot_from_cli_str(str_params: str, fig: figure.Figure, ax: axes.Axes):
     import importlib
     import shlex
 
@@ -298,9 +251,8 @@ def plot_from_cli_str(str_params: str, fig, ax):
 
     info_name = params_list[0]
     args = params_list[1:]
-    app = importlib.import_module(f"hbtools.{info_name}.cli").app
-
-    # print(params_list)
+    module = importlib.import_module(f"hbtools.{info_name}.cli")
+    app = getattr(module, "app")
 
     cmd: click.Command = get_command(app)
     # print(cmd.make_context(info_name, args))
@@ -309,79 +261,62 @@ def plot_from_cli_str(str_params: str, fig, ax):
     rv[0](rv[1], fig, ax)
 
 
-def get_2d_first_brillouin_zone(cell):
-    """
-    copy from http://staff.ustc.edu.cn/~zqj/posts/howto-plot-brillouin-zone/
+def plot_series(plot_cls: type[FigPlotBase], params: FigSetBase):
+    from pathlib import Path
 
-    """
+    set_style(params.matplotlibrc)
 
-    def clockwiseangle_and_distance(point, origin=[0, 0], refvec=[0, 1]):
-        """
-        copy from https://stackoverflow.com/questions/41855695/sorting-list-of-two-dimensional-coordinates-by-clockwise-angle-using-python
+    import matplotlib.pyplot as plt
 
-        """
-        import math
+    files = list(Path(".").rglob(params.file))
+    if len(files) == 0:
+        raise ValueError("No files found. Ensure the file is correct.")
+    elif len(files) == 1:
+        return render_and_save(plot_cls, params, None, None)
 
-        # Vector between point and the origin: v = p - o
-        vector = [point[0] - origin[0], point[1] - origin[1]]
-        # Length of vector: ||v||
-        lenvector = math.hypot(vector[0], vector[1])
-        # If length is zero there is no angle
-        if lenvector == 0:
-            return -math.pi, 0
-        # Normalize vector: v/||v||
-        normalized = [vector[0] / lenvector, vector[1] / lenvector]
-        dotprod = normalized[0] * refvec[0] + normalized[1] * refvec[1]  # x1*x2 + y1*y2
-        diffprod = (
-            refvec[1] * normalized[0] - refvec[0] * normalized[1]
-        )  # x1*y2 - y1*x2
-        angle = math.atan2(diffprod, dotprod)
-        # Negative angles represent counter-clockwise angles so we need to subtract them
-        # from 2*pi (360 degrees)
-        if angle < 0:
-            return 2 * math.pi + angle, lenvector
-        # I return first the angle because that's the primary sorting criterium
-        # but if two vectors have the same angle then the shorter distance should come first.
-        return angle, lenvector
+    else:
+        if not params.from_cli:
+            raise ValueError("Do not specify multiple files in script mode.")
 
-    import numpy as np
+    savedir = Path(params.save) if params.save != "" else None
+    params.save = ""
 
-    cell = np.asarray(cell, dtype=float)
-    cell_33 = np.block(
-        [
-            [cell, np.zeros((2, 1))],
-            [np.zeros((1, 2)), np.eye((1))],
-        ]
-    )
+    if params.show:
+        params.show = False
+        current_index = 0
+        num_figures = len(files)
+        fig, ax = plt.subplots()
 
-    px, py, pz = np.tensordot(cell_33, np.mgrid[-1:2, -1:2, -1:2], axes=[0, 0])
-    points = np.c_[px.ravel(), py.ravel(), pz.ravel()]
+        def update_figure(files: list[Path], params: "FigSetBase", index: int):
+            params.file = str(files[index])
+            ax.clear()
+            render_and_save(plot_cls, params, fig, ax)
+            ax.set_title(f"{params.file}")
 
-    from scipy.spatial import Voronoi
+        update_figure(files, params, 0)
 
-    vor = Voronoi(points)
+        fig.canvas.draw()
 
-    # bz_facets = []
-    # bz_ridges = []
-    bz_vertices = []
+        def on_key(event: KeyEvent):
+            nonlocal current_index
+            if event.key in ["right", "down", "j", "l"]:
+                current_index = (current_index + 1) % num_figures
+            elif event.key in ["left", "up", "k", "h"]:
+                current_index = (current_index - 1) % num_figures
+            else:
+                return
 
-    # for rid in vor.ridge_vertices:
-    #     if( np.all(np.array(rid) >= 0) ):
-    #         bz_ridges.append(vor.vertices[np.r_[rid, [rid[0]]]])
-    #         bz_facets.append(vor.vertices[rid])
+            update_figure(files, params, current_index)
+            fig.canvas.draw()
 
-    for pid, rid in zip(vor.ridge_points, vor.ridge_vertices):
-        # WHY 13 ????
-        # The Voronoi ridges/facets are perpendicular to the lines drawn between the
-        # input points. The 14th input point is [0, 0, 0].
-        if pid[0] == 13 or pid[1] == 13:
-            # bz_ridges.append(vor.vertices[np.r_[rid, [rid[0]]]])
-            # bz_facets.append(vor.vertices[rid])
-            bz_vertices += rid
+        fig.canvas.mpl_connect("key_press_event", on_key)  # type: ignore
 
-    bz_vertices = list(set(bz_vertices))
-    vertices = [
-        i[:-1] for i in vor.vertices[bz_vertices] if abs(i[2] - 0.5) < 0.0000001
-    ]
-    return sorted(vertices, key=clockwiseangle_and_distance)
-    # return vor.vertices[bz_vertices], bz_ridges, bz_facets
+        plt.show()
+    if savedir is not None:
+        from tqdm import tqdm
+
+        savedir.mkdir(exist_ok=True)
+        for file in tqdm(files, desc="Saving figures"):
+            params.file = str(file)
+            params.save = f"{savedir}/{file}.png"
+            render_and_save(plot_cls, params, None, None)

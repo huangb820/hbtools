@@ -1,21 +1,17 @@
 import itertools
 import sys
-from pathlib import Path
 
 import numpy as np
-import rich
+import numpy.typing as npt
 from numpy.typing import NDArray
+import rich
 from rich.panel import Panel
-from typing_extensions import TYPE_CHECKING
 
-from .dataread import Readvaspout
-
-if TYPE_CHECKING:
-    from .dataread import Readvaspout, ReadVasprun
+from .dataread import VaspData
 
 
 def get_gap(
-    eigenvalues: NDArray[np.float64],
+    eigenvalues: npt.NDArray[np.floating],
     fermi: float,
     kpoints: np.ndarray,
     stdout: bool = False,
@@ -29,7 +25,7 @@ def get_gap(
 
         if (extremum[:, 0] * extremum[:, 1]).min() > 0:
             maxs = extremum[:, 1]
-            vbm = np.count_nonzero(abs(maxs) - maxs)
+            vbm = int(np.count_nonzero(abs(maxs) - maxs))
             return vbm
         else:
             return True
@@ -43,7 +39,7 @@ def get_gap(
         return kpoints[index]
 
     ylist = eigenvalues - fermi
-    gaps = []
+    gaps: list[float] = []
     std_str = ""
 
     if stdout:
@@ -52,7 +48,7 @@ def get_gap(
     for i, spin in enumerate(ylist):
         vbm = is_metal_or_vbm(spin) if vbms is None else vbms[i]
         if stdout:
-            std_str += f"[yellow]{'='*30} {i+1}th spin {'='*30} [/yellow]\n"
+            std_str += f"[yellow]{'=' * 30} {i + 1}th spin {'=' * 30} [/yellow]\n"
         if vbm is True:
             gaps.append(0.0)
             if stdout:
@@ -77,7 +73,7 @@ def get_gap(
                 if stdout:
                     std_str += f"vbm locates at{k_vbm} of [red]{vbm}th[/red] band, vbm energy is [orange1]{vbm_energy:.6f} eV[/orange1]\n"
 
-                    std_str += f"cbm locates at {k_cbm} of [red]{vbm+1}th[/red] band, cbm energy is [orange1]{cbm_energy:.6f}[/orange1] eV\n"
+                    std_str += f"cbm locates at {k_cbm} of [red]{vbm + 1}th[/red] band, cbm energy is [orange1]{cbm_energy:.6f}[/orange1] eV\n"
                     std_str += f"band gap is {gap}\n"
     if stdout:
         rich.print(Panel(std_str))
@@ -101,7 +97,7 @@ def get_valley_polarization(
         if (extremum[:, 0] * extremum[:, 1]).min() > 0:
             maxs = extremum[:, 1]
             vbm = np.count_nonzero(abs(maxs) - maxs)
-            return vbm
+            return int(vbm)
         else:
             return True
 
@@ -115,7 +111,7 @@ def get_valley_polarization(
         value2: float = spin[point2, vbm - 1]
         rich.print(f"Energy at point {point2} of band {vbm} is {value2:.6f} eV")
 
-        rich.print(f"valley value is {value2-value1:.6f} eV")
+        rich.print(f"valley value is {value2 - value1:.6f} eV")
 
 
 orbitals_str_all = (
@@ -126,12 +122,12 @@ orbitals_str_all = (
 class ParsePro:
     def __init__(
         self,
-        data: "ReadVasprun | Readvaspout",
+        data: VaspData,
         atom_orbital_str: str,
         color: str,
         index: int,
     ):
-        self.__data: "Readvaspout | ReadVasprun" = data
+        self.__data: VaspData = data
         self.__orbital_str_all = orbitals_str_all[0 : self.__data.orbital_num]
         self.result, self.result_str = self.handle(atom_orbital_str)
         test = Panel(
@@ -142,9 +138,9 @@ class ParsePro:
         )
         rich.print(test)
 
-    def handle(self, atom_orbital_strs) -> tuple[list[tuple[int, int]], str]:
-        result = []
-        result_str_list = []
+    def handle(self, atom_orbital_strs: str) -> tuple[list[tuple[int, int]], str]:
+        result: list[tuple[int, int]] = []
+        result_str_list: list[str] = []
         for atom_orbital_str in atom_orbital_strs.split(";"):
             ao_list, ao_str = self.__parse_atom_orbital(atom_orbital_str)
             result.extend(ao_list)
@@ -158,7 +154,7 @@ class ParsePro:
         return (result, " + ".join(result_str_list))
 
     def __parse_atom_orbital(
-        self, atom_orbital_str
+        self, atom_orbital_str: str
     ) -> tuple[list[tuple[int, int]], str]:
         if len(atom_orbital_str.split(":")) != 2:
             print(f"can't parse {atom_orbital_str}, check it!")
@@ -169,7 +165,6 @@ class ParsePro:
         atom_orbital_list = list(itertools.product(atom_list, orbital_list))
         atom_orbital_str = f"orbital {orbital_str} of atom {atom_str}"
         return (atom_orbital_list, atom_orbital_str)
-        pass
 
     def __handle_atom_str(self, atom_str: str) -> tuple[list[int], str]:
         try:
