@@ -16,6 +16,7 @@ dependencies = [
     "seekpath>=2.1.0",
     "pymatgen>=2025.6.14",
     "spinmc>=0.1.1",
+    "tqdm>=4.67.1",
 ]
 
 [project.scripts]
@@ -37,3 +38,12 @@ dev = [
     "mypy>=1.15.0",
     "optype[numpy]>=0.9.3",
 ]
+
+
+[tool.pyright]
+typeCheckingMode = "strict"
+reportUnknownMemberType = "none"
+
+[tool.mypy]
+ignore_missing_imports = true
+files = "src"

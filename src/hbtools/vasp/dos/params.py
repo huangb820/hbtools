@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-from pathlib import Path
 from typing import Annotated
 
 import click
@@ -12,7 +11,7 @@ import typer
 
 @dataclass
 class DosParams(FigSetBase):
-    file: Annotated[Path, typer.Argument(exists=True)] = Path("vaspout.h5")
+    file: Annotated[str, typer.Argument(exists=True)] = "vaspout.h5"
     vaspfileformat: Annotated[
         str,
         typer.Option(

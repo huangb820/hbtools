@@ -1,18 +1,15 @@
 from dataclasses import dataclass
-from pathlib import Path
 from typing import Annotated
 
 import click
+import typer
 
 from hbtools.utils.common_params import FigSetBase, HeatFigBase
 
 
-import typer
-
-
 @dataclass
 class BandParams(HeatFigBase, FigSetBase):
-    file: Annotated[Path, typer.Argument(exists=True)] = Path("vaspout.h5")
+    file: Annotated[str, typer.Argument(exists=True)] = "vaspout.h5"
     vaspfileformat: Annotated[
         str,
         typer.Option(
@@ -136,23 +133,6 @@ class BandParams(HeatFigBase, FigSetBase):
         ),
     ] = False
 
-
-@dataclass
-class BandsParams(BandParams):
-    files: Annotated[
-        str, typer.Argument(help="Glob pattern(s) to match band structure files")
-    ] = r"*/vaspout.h5"
-    file: Path | None = None
-    # file: Annotated[Path | None, typer.Argument(exists=True)] = None
-    search_dir: Annotated[
-        Path, typer.Option("-sd", "--search_dir", help="which dir to search")
-    ] = Path(".")
-
-    save: Annotated[
-        bool,
-        typer.Option(
-            "--save",
-            help="whether save figures",
-            rich_help_panel="figure set",
-        ),
-    ] = False
+    export: Annotated[
+        bool, typer.Option("--export/--noexport", help="whether export band data")
+    ] = True

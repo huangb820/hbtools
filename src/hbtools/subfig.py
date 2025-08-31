@@ -24,9 +24,9 @@ def subfig(
                 f"""
                 import matplotlib.pyplot as plt
 
+                from hbtools.utils.plot_utils import plot_from_cli_str, set_style
 
-                from hbtools.utils.plot_utils import plot_from_cli_str
-
+                set_style()
                 fig, axs = plt.subplots(nrows={rows}, ncols={cols} {share})
                 axs = axs.flat
                 """

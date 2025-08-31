@@ -24,7 +24,7 @@ class HeatFigBase:
             help="specific cmap",
             rich_help_panel="Colormap Figure set",
         ),
-    ] = "cet_coolwarm"
+    ] = "bwr"
 
     cticks: Annotated[
         str | None,
