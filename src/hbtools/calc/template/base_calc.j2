@@ -1,0 +1,136 @@
+{# ================== combined_cal.py.j2 ================== #}
+from hbtools.calc.utils.init_set import relax, static, band, wannier
+from ase.io import read, write
+from pathlib import Path
+import numpy as np
+import os
+
+# ---------------- 基础参数 ----------------
+base_para = {{ original_para | tojson(indent=4) }}
+
+atoms0 = read{{ poscar_file }}
+
+# ========== 磁性 ==========
+{% if enable_mag %}
+isp_para = {"ispin": 2, "magmom": {{ magmom }}}
+{% else %}
+isp_para = {}
+{% endif %}
+
+# ========== 磁性设置 ==========
+{% block magnetism %}
+isp_para = {"ispin": 2, "magmom": {{ magmom }}}
+{% endblock %}
+isp_calc_para = {**original_para, **isp_para}
+
+# ========== 应变扫描 ==========
+{% block strain %}
+# 默认不做应变
+atoms_list = [(atoms0, work_dir)]
+{% endblock %}
+
+# ========== 计算流程 ==========
+for atoms, work_dir in atoms_list:
+    # relax
+    relax_atoms = relax(atoms, work_dir, 'vasp_std', isp_calc_para, "relax")
+
+    # isp 静态计算
+    static(relax_atoms, work_dir, 'vasp_std', isp_calc_para, "isp_static")
+    band(relax_atoms, work_dir, 'vasp_std', isp_calc_para, "isp_band", "isp_static")
+
+    # ========== 可选 SOC ==========
+    {% block soc %}
+    {% endblock %}
+
+    # ========== 可选 Wannier ==========
+    {% block wannier %}
+    {% endblock %}
+
+print("**********   Successfully finished all calculations   **********")
+
+
+# ========== 定义扫描循环 ==========
+
+{% if enable_u %}
+u_values = {{ u_values }}
+ldau_luj_template = {{ ldau_luj | tojson(indent=4) }}
+{% endif %}
+
+{% if enable_strain %}
+lattice = atoms0.get_cell()[0, 0]
+lat = round(lattice, 4)
+strain_values = np.arange({{ strain.start }}, {{ strain.stop }}, {{ strain.step }})
+{% endif %}
+
+# ========== 嵌套逻辑控制 ==========
+nest_order = "{{ nest_order }}"   # "u-out" 表示 U 外层，应变内层；"strain-out" 表示应变外层，U 内层
+
+def make_ldau_para(U):
+    ldau_luj = {k:{**v, "U":U} for k,v in ldau_luj_template.items()}
+    return {"ldautype":2, "lmaxmix":4, "ldau_luj":ldau_luj}
+
+# ========== 构建循环列表 ==========
+jobs = []
+
+{% if enable_u and enable_strain %}
+if nest_order == "u-out":
+    for U in u_values:
+        ldau_para = make_ldau_para(U)
+        para_u = {**base_para, **ldau_para, **isp_para}
+        for a in strain_values:
+            atoms = atoms0.copy()
+            lat_con = round(a * lat, 4)
+            atoms.set_cell([lat_con, lat_con, 20], scale_atoms=True)
+            work_dir = Path(f"U{U}_strain{a:.3f}")
+            jobs.append((atoms, work_dir, para_u))
+elif nest_order == "strain-out":
+    for a in strain_values:
+        atoms = atoms0.copy()
+        lat_con = round(a * lat, 4)
+        atoms.set_cell([lat_con, lat_con, 20], scale_atoms=True)
+        for U in u_values:
+            ldau_para = make_ldau_para(U)
+            para_u = {**base_para, **ldau_para, **isp_para}
+            work_dir = Path(f"strain{a:.3f}_U{U}")
+            jobs.append((atoms, work_dir, para_u))
+{% elif enable_u %}
+for U in u_values:
+    ldau_para = make_ldau_para(U)
+    para_u = {**base_para, **ldau_para, **isp_para}
+    jobs.append((atoms0, Path(f"U{U}"), para_u))
+{% elif enable_strain %}
+for a in strain_values:
+    atoms = atoms0.copy()
+    lat_con = round(a * lat, 4)
+    atoms.set_cell([lat_con, lat_con, 20], scale_atoms=True)
+    jobs.append((atoms, Path(f"strain{a:.3f}"), {**base_para, **isp_para}))
+{% else %}
+jobs.append((atoms0, Path("."), {**base_para, **isp_para}))
+{% endif %}
+
+# ========== 计算流程 ==========
+for atoms, work_dir, calc_para in jobs:
+    relax_atoms = relax(atoms, work_dir, 'vasp_std', calc_para, "relax")
+    static(relax_atoms, work_dir, 'vasp_std', calc_para, "isp_static")
+    band(relax_atoms, work_dir, 'vasp_std', calc_para, "isp_band", "isp_static")
+
+    # ========== 可选 SOC ==========
+    {% if enable_soc %}
+    relax_atoms[0].magmom = [0,0,3]
+    relax_atoms[1].magmom = [0,0,-3]
+    soc_para = {"ispin":2,"lsorbit":True,"lnoncollinear":True,"nelm":100,"lorbmom":True}
+    soc_para = {**calc_para, **soc_para}
+    conver_para = {"amix":0.2,"bmix":0.001,"amix_mag":0.8,"bmix_mag":0.001,"ediff":1e-4,"ediffg":-0.01}
+    conver_para = {**soc_para, **conver_para}
+    static(relax_atoms, work_dir, 'vasp_ncl', conver_para, "soc_static", "isp_static")
+    band(relax_atoms, work_dir, 'vasp_ncl', conver_para, "soc_band", "soc_static")
+    {% endif %}
+
+    # ========== 可选 Wannier ==========
+    {% if enable_wannier %}
+    wannier(relax_atoms, work_dir, 'vasp_ncl', conver_para, "soc_wannier", "soc_static")
+    {% endif %}
+
+print("**********   Successfully finished all calculations   **********")
+
+

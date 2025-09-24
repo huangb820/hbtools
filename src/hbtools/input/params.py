@@ -2,9 +2,14 @@ from pathlib import Path
 import click
 import typer
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Annotated
 
+@dataclass
+class INCARParams:
+    work_dir: Annotated[Path, typer.Option("-wd", "--work-dir", help="work directory")] = Path(".")
+    input_filename: Annotated[str, typer.Option("-if", "--input-file", help="input filename")] = "POSCAR"
+    output_filename: Annotated[str | None, typer.Option("-of", "--output_filename", help="output filename : INCAR, POTCAR, KPOINTS.")] = "INCAR"
 
 @dataclass
 class POTCARParams:
@@ -15,7 +20,7 @@ class POTCARParams:
         str, typer.Option("-if", "--input-file", help="input filename")
     ] = "POSCAR"
     output_filename: Annotated[
-        str,
+        str | None,
         typer.Option(
             "-of", "--output_filename", help="output filename : INCAR, POTCAR, KPOINTS."
         ),
@@ -31,7 +36,7 @@ class POTCARParams:
 
 
 @dataclass
-class InputParams:
+class KPOINTSParams:
     # 写死的高对称点（可扩展）
     # 默认参数
     work_dir: Annotated[
@@ -41,11 +46,11 @@ class InputParams:
         str, typer.Option("-if", "--input-file", help="input filename")
     ] = "POSCAR"
     output_filename: Annotated[
-        str | None,
+        str,
         typer.Option(
-            "-of", "--output_filename", help="output filename : INCAR, POTCAR, KPOINTS."
+            "-of", "--output_filename", help="output filename : KPOINTS."
         ),
-    ] = None
+    ] = 'KPOINTS'
     sp_symprec: Annotated[
         float,
         typer.Option("-ss", "--sp-symprec", help="symmetry precision for spacegroup"),

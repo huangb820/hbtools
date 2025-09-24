@@ -2,7 +2,7 @@ from ase.io import read
 import seekpath
 from pathlib import Path
 from ase import Atoms
-from .params import InputParams
+from .params import KPOINTSParams
 from spglib.spglib import get_symmetry_dataset
 from rich.console import Console
 from rich.table import Table
@@ -11,7 +11,7 @@ import typer
 console = Console()
 
 
-fixed_points: dict = {
+fixed_points: dict[str, dict[str, list[float]]] = {
     "hexagonal": {
         "G": [0.0, 0.0, 0.0],
         "M": [0.5, 0.0, 0.0],
@@ -41,13 +41,15 @@ default_kpaths = {
 }
 
 
-def detect_lattice_type(params: InputParams) -> str:
+def detect_lattice_type(params: KPOINTSParams) -> str:
     """
     Automatically detect lattice type using ASE + seekpath.
     """
     try:
         structure: Atoms | list[Atoms] = read(params.input_filename, index=0)
         space_group = get_symmetry_dataset(structure, params.sp_symprec)  # type: ignore
+        if space_group is None or "number" not in space_group:
+            return "hexagonal"  # fallback or handle as needed
         sp_number: int = int(space_group["number"])
         if sp_number in range(143, 195):
             return "hexagonal"
@@ -63,7 +65,7 @@ def detect_lattice_type(params: InputParams) -> str:
         return "hexagonal"
 
 
-def parse_line_path(params: InputParams) -> list[str]:
+def parse_line_path(params: KPOINTSParams) -> list[str]:
     """
     将空格分隔的高对称点路径解析为列表。
     支持多字符标签（如 M1、M2、K' 这类，只要在点表里有即可）。
@@ -72,7 +74,7 @@ def parse_line_path(params: InputParams) -> list[str]:
     return kpath_str
 
 
-def get_kpoint_path(params: InputParams):
+def get_kpoint_path(params: KPOINTSParams) -> dict[str, list[float]]:
     """
     通过 seekpath 获取高对称点路径。
     和默认的合并，默认的覆盖seekpath得到的。
@@ -103,7 +105,7 @@ def get_kpoint_path(params: InputParams):
     return finally_kpoints_path
 
 
-def write_kpoints_file(params: InputParams):
+def write_kpoints_file(params: KPOINTSParams):
     """
     根据 params中的模式选择 生成 KPOINTS 文件的方式。
     """
@@ -159,7 +161,7 @@ def write_kpoints_file(params: InputParams):
     print(f"KPOINTS file written to {output_file}")
 
 
-def write_kpoint_grid(params: InputParams):
+def write_kpoint_grid(params: KPOINTSParams):
     """
     网格类型的生成
     """

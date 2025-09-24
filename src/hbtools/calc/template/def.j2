@@ -1,0 +1,63 @@
+from hbtools.calc.utils.init_set import relax, static, band, wannier
+from ase.io import read, write
+from pathlib import Path
+import os
+
+original_para = {{ original_para }}
+ldau_luj = {{ ldau_luj }}
+ldau_para = {'ldautype': 2, 'lmaxmix': 4, 'ldau_luj': ldau_luj}
+original_para = {**original_para, **ldau_para}
+
+
+
+
+for strain in strain_values:
+    {% if strain_list %}
+    # 对结构施加应变
+    from hbtools.calc.utils.strain import apply_strain
+    strained_atoms = apply_strain(atoms, strain, mode="{{ strain_mode }}")
+    strain_dir = work_dir / f"strain_{strain:+.3f}"
+    strain_dir.mkdir(exist_ok=True)
+    write(strain_dir / "POSCAR", strained_atoms)
+    {% else %}
+    strained_atoms = atoms
+    strain_dir = work_dir
+    {% endif %}
+
+    for u in u_values:
+        if u is not None:
+            for elem in ldau_luj.keys():
+                ldau_luj[elem]['U'] = u
+
+        ldau_para = {'ldautype': 2, 'lmaxmix': 4, 'ldau_luj': ldau_luj}
+        calc_para = {**original_para, **ldau_para}
+        isp_para = {'ispin': {{ 2 if mag else 1 }}, 'magmom': {{ magmom_list }}}
+        isp_calc_para = {**calc_para, **isp_para}
+
+        u_dir = strain_dir / ("U_{:.2f}".format(u) if u is not None else "U_default")
+        u_dir.mkdir(exist_ok=True)
+
+        relax_atoms = relax(strained_atoms, u_dir, 'vasp_std', isp_calc_para, 'relax')
+        static(relax_atoms, u_dir, 'vasp_std', isp_calc_para, 'static')
+        band(relax_atoms, u_dir, 'vasp_std', isp_calc_para, 'isp_band', 'isp_static')
+
+        {% if soc %}
+        soc_para = {
+            'ispin': 2,
+            'lsorbit': True,
+            'lnoncollinear': True,
+            'nelm': 100,
+            'lorbmom': True
+        }
+        soc_calc_para = {**calc_para, **soc_para}
+        {% if soc_conv %}
+        soc_conv_para = {'amix': 0.2, 'bmix': 0.001, 'amix_mag': 0.8, 'bmix_mag': 0.001}
+        soc_calc_para = {**soc_calc_para, **soc_conv_para}
+        {% endif %}
+        static(relax_atoms, u_dir, 'vasp_std', soc_calc_para, 'soc_static')
+        band(relax_atoms, u_dir, 'vasp_std', soc_calc_para, 'soc_band', 'soc_static')
+        {% endif %}
+
+        {% if wann %}
+        wannier(relax_atoms, u_dir, 'vasp_ncl', soc_calc_para, 'wannier', 'soc_static')
+        {% endif %}

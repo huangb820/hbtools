@@ -1,10 +1,6 @@
-from pathlib import Path
-import pprint
-from typing import Annotated
-import click
 import typer
 from ..utils.cli_utils import dataclass_cli
-from .params import InputParams,POTCARParams
+from .params import KPOINTSParams,POTCARParams
 
 
 app = typer.Typer(no_args_is_help=True)
@@ -12,16 +8,14 @@ app = typer.Typer(no_args_is_help=True)
 
 @app.command("init")
 @dataclass_cli
-def init_config(params:POTCARParams):
-    from .potcar import init_config
+def init_config(file_path:str):
+    from .init_config import init_config
     init_config()
 
 @app.command("kpoints")
 @dataclass_cli
-def generate_kpoints(params: InputParams):
+def generate_kpoints(params: KPOINTSParams):
     from .kpoints import write_kpoint_grid,write_kpoints_file
-    if params.output_filename is None:
-        params.output_filename = "KPOINTS"
 
     if params.kpoints_type == "line":
         write_kpoints_file(params)
@@ -32,7 +26,5 @@ def generate_kpoints(params: InputParams):
 @dataclass_cli
 def generate_potcar(params: POTCARParams):
     from .potcar import write_potcar as write_potcar_file
-    if params.output_filename is None:
-        params.output_filename = "POTCAR"
 
     write_potcar_file(params)

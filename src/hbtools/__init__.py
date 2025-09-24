@@ -3,11 +3,11 @@ import sys
 import typer
 
 from . import vasp
-from .input.cli import app as input_app
 
 from .subfig import subfig
 from .vasp.cli import app as plot_app
-
+from .input.cli import app as input_app
+from .calc.cli import app as calc_app
 sys.modules["hbtools.plot"] = vasp
 
 app = typer.Typer(
@@ -19,5 +19,6 @@ app = typer.Typer(
 
 app.add_typer(plot_app, name="plot")
 app.add_typer(input_app, name="input")
+app.add_typer(calc_app, name="calc")
 
 app.command()(subfig)
