@@ -92,7 +92,7 @@ class AxesSet:
         self.ax.set_xticklabels(
             self.params.xticklabels
         ) if self.params.xticklabels is not None else ...
-        self.ax.xaxis.set_minor_locator(AutoMinorLocator())
+        self.ax.xaxis.set_minor_locator(AutoMinorLocator(self.params.n_minor))
 
     def set_yticks(self):
         from matplotlib.ticker import AutoLocator, AutoMinorLocator
@@ -105,7 +105,7 @@ class AxesSet:
         self.ax.set_yticklabels(
             self.params.yticklabels
         ) if self.params.yticklabels is not None else ...
-        self.ax.yaxis.set_minor_locator(AutoMinorLocator())
+        self.ax.yaxis.set_minor_locator(AutoMinorLocator(self.params.n_minor))
 
     def hide_ticks(self):
         if self.params.hide_xticks:

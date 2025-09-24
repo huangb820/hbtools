@@ -151,10 +151,11 @@ class BandPlot(plot_utils.FigPlotBase):
 
     def fig_set(self):
         BandAxesSet(self.ax, self.params, self.data)
-        y_major_tick_size = mpl.rcParams["ytick.major.size"]
+        #y_major_tick_size = mpl.rcParams["ytick.major.size"]
         self.ax.axhline(
             0,
-            ls=(0, (y_major_tick_size, y_major_tick_size)),
+            ls="dashed",
+            #ls=(0, (y_major_tick_size, y_major_tick_size)),
             c="black",
             lw=mpl.rcParams["ytick.major.width"],
             zorder=0,

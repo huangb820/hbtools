@@ -110,6 +110,14 @@ class FigSetBase:
         ),
     ] = None
 
+    n_minor: Annotated[
+        int,
+        typer.Option(
+            "--minor-n",
+            help="Number of minor ticks between two major ticks (AutoMinorLocator n)",
+        ),
+    ] = 2
+
     title: Annotated[
         str | None,
         typer.Option(
