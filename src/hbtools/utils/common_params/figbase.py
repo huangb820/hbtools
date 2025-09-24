@@ -136,7 +136,7 @@ class FigSetBase:
             help="figure save name or directory",
             rich_help_panel="figure set",
         ),
-    ] = ""
+    ] = "figure.png"
 
     from_cli: Annotated[
         bool,
