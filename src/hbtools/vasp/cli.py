@@ -16,8 +16,6 @@ app = typer.Typer(no_args_is_help=True)
 def band(params: BandParams):
     from ..utils import plot_utils
     from .band.bandplot import BandPlot
-    import matplotlib
-    matplotlib.use("qtagg")
 
 
     return plot_utils.plot_series(BandPlot, params)
