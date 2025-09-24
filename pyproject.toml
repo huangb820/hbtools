@@ -14,6 +14,7 @@ dependencies = [
     "typer>=0.15.4",
     "ase@git+https://gitlab.com/1041176461/ase-abacus.git",
     "seekpath>=2.1.0",
+    "pyqt6>=6.0.0",
     "pymatgen>=2025.6.14",
     "spinmc>=0.1.1",
     "tqdm>=4.67.1",
