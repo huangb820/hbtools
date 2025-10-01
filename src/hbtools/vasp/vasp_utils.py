@@ -83,8 +83,8 @@ def get_gap(
 
 def get_valley_polarization(
     eigenvalues: NDArray[np.float64],
-    vbms: list[int] | None = None,
     fermi: float = 0.0,
+    vbms: list[int] | None = None,
     point1: int = 49,
     point2: int = 149,
 ):
@@ -111,7 +111,7 @@ def get_valley_polarization(
         value2: float = spin[point2, vbm - 1]
         rich.print(f"Energy at point {point2} of band {vbm} is {value2:.6f} eV")
 
-        rich.print(f"valley value is {value2 - value1:.6f} eV")
+        rich.print(f"valley polarization is {value2 - value1:.6f} eV")
 
 
 orbitals_str_all = (

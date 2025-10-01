@@ -32,8 +32,8 @@ class ReadVaspout(VaspData):
     # structure
 
     def _symbols(self) -> list[str]:
-        ion_types = np.array(self.file.get("results/positions/ion_types"))
-        number_ion_types = np.array(self.file.get("results/positions/number_ion_types"))
+        ion_types = np.array(self.file.get("results/positions/ion_types"))  # type: ignore
+        number_ion_types = np.array(self.file.get("results/positions/number_ion_types")) # type: ignore
         symbols: list[str] = []
         for i, ion in enumerate(ion_types):
             symbols.extend([ion.decode("utf-8")] * number_ion_types[i])
