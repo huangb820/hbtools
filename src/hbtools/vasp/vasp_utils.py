@@ -101,7 +101,6 @@ def get_valley_polarization(
         else:
             return True
 
-    eigenvalues = eigenvalues
     ylist = eigenvalues - fermi
 
     for i, spin in enumerate(ylist):

@@ -118,7 +118,7 @@ def gap(
 
 
 @app.command("vp")
-def get_valley_polarization(
+def get_valley_polarizations(
     file: Annotated[Path, typer.Argument(exists=True)] = Path("vaspout.h5"),
     vaspfileformat: Annotated[
         str,
