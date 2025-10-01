@@ -8,7 +8,7 @@ dependencies = [
     "h5py>=3.13.0",
     "lxml<6.0.0",
     "matplotlib<=3.10.3",
-    "numpy<2.3",
+    "numpy<2.2",
     "contourpy<1.3.3", # numpy和 contourpy 是为了Centos 7 兼容
     "rich>=14.0.0",
     "typer>=0.15.4",
