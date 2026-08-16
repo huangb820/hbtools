@@ -3,3 +3,5 @@ dist/
 test/
 .venv
 .vscode/
+wannier90/
+node_modules

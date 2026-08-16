@@ -8,6 +8,7 @@ from .subfig import subfig
 from .vasp.cli import app as vasp_app
 from .input.cli import app as input_app
 from .calc.cli import app as calc_app
+from .wannier.cli import app as wannier_app
 sys.modules["hbtools.plot"] = vasp
 
 app = typer.Typer(
@@ -20,5 +21,6 @@ app = typer.Typer(
 app.add_typer(vasp_app, name="vasp")
 app.add_typer(input_app, name="input")
 app.add_typer(calc_app, name="calc")
+app.add_typer(wannier_app, name="wannier")
 
 app.command()(subfig)

@@ -81,14 +81,14 @@ def get_gap(
     return gaps
 
 
-def get_valley_polarization(
+def get_valley_polarizations(
     eigenvalues: NDArray[np.float64],
     fermi: float = 0.0,
     vbms: list[int] | None = None,
     point1: int = 49,
     point2: int = 149,
-):
-    def is_metal_or_vbm(ylist: NDArray[np.float64]) -> bool | int:
+) -> None:
+    def _is_metal_or_vbm(ylist: NDArray[np.float64]) -> bool | int:
         nbands = ylist.shape[1]
         extremum = np.array(
             [[ylist[:, n].min(), ylist[:, n].max()] for n in range(nbands)]
@@ -96,15 +96,13 @@ def get_valley_polarization(
 
         if (extremum[:, 0] * extremum[:, 1]).min() > 0:
             maxs = extremum[:, 1]
-            vbm = np.count_nonzero(abs(maxs) - maxs)
-            return int(vbm)
-        else:
-            return True
+            return int(np.count_nonzero(abs(maxs) - maxs))
+        return True
 
     ylist = eigenvalues - fermi
 
     for i, spin in enumerate(ylist):
-        vbm = is_metal_or_vbm(spin) if vbms is None else vbms[i]
+        vbm = _is_metal_or_vbm(spin) if vbms is None else vbms[i]
         value1: float = spin[point1, vbm - 1]
         rich.print(f"Energy at point {point1} of band {vbm} is {value1:.6f} eV")
         value2: float = spin[point2, vbm - 1]

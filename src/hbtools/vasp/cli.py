@@ -140,7 +140,7 @@ def get_valley_polarizations(
     point1: Annotated[int, typer.Option("--point1", "-p1", help="K+")] = 49,
     point2: Annotated[int, typer.Option("--point2", "-p2", help="K-")] = 149,
 ):
-    from ..vasp.vasp_utils import get_valley_polarization
+    from ..vasp.vasp_utils import get_valley_polarizations
     from .dataread import ReadVaspout, ReadVasprun
 
     if vaspfileformat == "h5":
@@ -153,4 +153,4 @@ def get_valley_polarizations(
     else:
         vbms = None
 
-    return get_valley_polarization(data.eigenvalues, data.fermi, vbms, point1, point2)
+    return get_valley_polarizations(data.eigenvalues, data.fermi, vbms, point1, point2)
