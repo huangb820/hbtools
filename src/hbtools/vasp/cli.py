@@ -139,6 +139,14 @@ def get_valley_polarizations(
     ] = None,
     point1: Annotated[int, typer.Option("--point1", "-p1", help="K+")] = 49,
     point2: Annotated[int, typer.Option("--point2", "-p2", help="K-")] = 149,
+    auto: Annotated[
+        bool,
+        typer.Option(
+            "--auto",
+            "-a",
+            help="按价带顶能带的局域极大值自动选取两个谷 K 点（取代 -p1/-p2）",
+        ),
+    ] = False,
 ):
     from ..vasp.vasp_utils import get_valley_polarizations
     from .dataread import ReadVaspout, ReadVasprun
@@ -153,4 +161,6 @@ def get_valley_polarizations(
     else:
         vbms = None
 
-    return get_valley_polarizations(data.eigenvalues, data.fermi, vbms, point1, point2)
+    return get_valley_polarizations(
+        data.eigenvalues, data.fermi, vbms, point1, point2, auto=auto
+    )

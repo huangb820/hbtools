@@ -81,12 +81,40 @@ def get_gap(
     return gaps
 
 
+def _local_maxima_indices(y: NDArray[np.float64]) -> NDArray[np.int64]:
+    """Return the indices of local maxima of a 1-D array (plateau-tolerant).
+
+    A plateau on top of a peak counts as a single maximum: flat steps inherit
+    the last non-zero slope before the peak is detected.
+    """
+    sign = np.sign(np.diff(y))
+    if sign.size == 0:
+        return np.empty(0, dtype=np.int64)
+    for i in range(1, sign.size):
+        if sign[i] == 0:
+            sign[i] = sign[i - 1]
+    return (np.where((sign[:-1] > 0) & (sign[1:] < 0))[0] + 1).astype(np.int64)
+
+
+def _valley_kpoints(y: NDArray[np.float64], n: int = 2) -> list[int]:
+    """Return the k-point indices of the ``n`` highest local maxima of a band."""
+    candidates = {int(i) for i in _local_maxima_indices(y)}
+    # k-path edges may be local maxima too (e.g. the end of the path)
+    if y.size >= 2:
+        if y[0] > y[1]:
+            candidates.add(0)
+        if y[-1] > y[-2]:
+            candidates.add(y.size - 1)
+    return sorted(candidates, key=lambda i: y[i], reverse=True)[:n]
+
+
 def get_valley_polarizations(
     eigenvalues: NDArray[np.float64],
     fermi: float = 0.0,
     vbms: list[int] | None = None,
     point1: int = 49,
     point2: int = 149,
+    auto: bool = False,
 ) -> None:
     def _is_metal_or_vbm(ylist: NDArray[np.float64]) -> bool | int:
         nbands = ylist.shape[1]
@@ -103,6 +131,21 @@ def get_valley_polarizations(
 
     for i, spin in enumerate(ylist):
         vbm = _is_metal_or_vbm(spin) if vbms is None else vbms[i]
+        if vbm is True:
+            rich.print(f"spin {i} 为金属，跳过谷极化计算")
+            continue
+
+        if auto:
+            valleys = _valley_kpoints(spin[:, vbm - 1])
+            if len(valleys) < 2:
+                rich.print(f"spin {i} 局域极大值不足两个，跳过自动谷选择")
+                continue
+            point1, point2 = valleys[0], valleys[1]
+            rich.print(
+                f"auto spin {i}: 谷 k={point1} (E={spin[point1, vbm - 1]:.6f} eV)、"
+                f"k={point2} (E={spin[point2, vbm - 1]:.6f} eV)"
+            )
+
         value1: float = spin[point1, vbm - 1]
         rich.print(f"Energy at point {point1} of band {vbm} is {value1:.6f} eV")
         value2: float = spin[point2, vbm - 1]
